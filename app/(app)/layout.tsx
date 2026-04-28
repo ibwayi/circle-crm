@@ -19,13 +19,15 @@ export default async function AppLayout({
     redirect("/login")
   }
 
+  const email = user.email ?? ""
+
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar email={email} />
       {/* min-w-0 + overflow-x-clip prevents wide table children from
           blowing out the flex column and shifting the sidebar. */}
       <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-x-clip">
-        <Topbar />
+        <Topbar email={email} />
         <main className="min-w-0 flex-1 overflow-x-clip">{children}</main>
       </div>
     </div>

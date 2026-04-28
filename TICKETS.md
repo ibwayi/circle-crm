@@ -92,7 +92,10 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 - [x] **T-4.1** App layout `app/(app)/layout.tsx` with sidebar + topbar (Monday-inspired)
   - _Server Component layout fetches user, falls back to `redirect('/login')`. Composition inlined (no separate `app-shell.tsx`) — `flex min-h-screen` with `<Sidebar />` aside + main column wrapping `<Topbar />` and `{children}`. `min-w-0 + overflow-x-clip` on the flex column (pathguide pattern) so wide tables won't push the sidebar around._
   - _`signOut` action moved from `app/(app)/dashboard/actions.ts` to `lib/auth/actions.ts` — reused by both topbar and (eventually) user menu._
-- [ ] **T-4.2** Sidebar nav: Dashboard, Customers, (View toggle later)
+- [x] **T-4.2** Sidebar nav: Dashboard, Customers, (View toggle later)
+  - _240px wide on desktop (`md:flex`); brand wordmark "Circle" with border-b; nav items use `LayoutDashboard` and `Users` from lucide-react with active highlighting via `usePathname` (`bg-secondary` + font-medium when active, muted otherwise; 150ms transition). Spacer pushes the user area to the bottom._
+  - _Bottom user area uses a shared `UserMenu` component (avatar with email-initial fallback + truncated email + chevron). Dropdown header shows "Signed in as / email" + Sign out item. Server action invoked via `onClick` (Base UI's MenuItem doesn't accept `asChild`, so the form-action pattern doesn't work; onClick + server-action protocol does)._
+  - _`SidebarContent` is exported separately so the topbar's mobile Sheet can render the same content (T-4.3)._
 - [ ] **T-4.3** Topbar: page title, search shortcut hint, user menu (avatar dropdown)
 - [x] **T-4.4** Theme tokens + dark mode toggle: review pathguide colors, settle final palette in `app/globals.css`, add `next-themes` provider in root layout, ship a theme toggle component (sun/moon icon in topbar dropdown), persist user choice
   - _Font: switched from Geist to **Questrial** (single weight 400) via `next/font/google`. Hierarchy comes from size + tracking, not weight. `--font-sans`, `--font-mono`, and `--font-heading` all resolve to Questrial._
