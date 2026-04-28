@@ -52,10 +52,13 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 
 ## Phase 2 — Database 🤖
 
-- [ ] **T-2.1** Create `supabase/migrations/` and write migration `0001_init_schema.sql`
+- [x] **T-2.1** Create `supabase/migrations/` and write migration `0001_init_schema.sql`
   - Tables: `customers`, `notes` (per CONCEPT.md schema)
   - Indexes on `user_id`, `status`, `customer_id`
-- [ ] **T-2.2** Migration `0002_rls.sql` — enable RLS, write policies for both tables
+  - _Includes a reusable `public.set_updated_at()` trigger function (used on `customers`; future tables can reuse). `notes.user_id` is denormalized from `customer_id` so RLS can gate notes directly without a join._
+  - _Adds `notes_check_ownership()` trigger (BEFORE INSERT OR UPDATE) that enforces `notes.user_id = customers.user_id` at the DB layer. SECURITY DEFINER + `IS DISTINCT FROM` so the check holds even for service-role connections that bypass RLS._
+- [x] **T-2.2** Migration `0002_rls.sql` — enable RLS, write policies for both tables
+  - _Single `FOR ALL` policy per table, gated on `auth.uid() = user_id`, with explicit `WITH CHECK` for clarity (defaults to `USING` if omitted)._
 - [ ] **T-2.3** Apply migrations to Supabase project (CLI or dashboard SQL editor)
 - [ ] **T-2.4** Generate TypeScript types: `pnpm dlx supabase gen types typescript --project-id <id> > types/database.ts`
 - [ ] **T-2.5** Build typed query helpers in `lib/db/customers.ts` and `lib/db/notes.ts` (CRUD functions, all typed)
