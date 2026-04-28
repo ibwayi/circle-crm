@@ -92,7 +92,11 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 - [ ] **T-4.1** App layout `app/(app)/layout.tsx` with sidebar + topbar (Monday-inspired)
 - [ ] **T-4.2** Sidebar nav: Dashboard, Customers, (View toggle later)
 - [ ] **T-4.3** Topbar: page title, search shortcut hint, user menu (avatar dropdown)
-- [ ] **T-4.4** Theme tokens + dark mode toggle: review pathguide colors, settle final palette in `app/globals.css`, add `next-themes` provider in root layout, ship a theme toggle component (sun/moon icon in topbar dropdown), persist user choice
+- [x] **T-4.4** Theme tokens + dark mode toggle: review pathguide colors, settle final palette in `app/globals.css`, add `next-themes` provider in root layout, ship a theme toggle component (sun/moon icon in topbar dropdown), persist user choice
+  - _Font: switched from Geist to **Questrial** (single weight 400) via `next/font/google`. Hierarchy comes from size + tracking, not weight. `--font-sans`, `--font-mono`, and `--font-heading` all resolve to Questrial._
+  - _Dark mode wired via `next-themes` with `attribute="class"`, `defaultTheme="light"`, `enableSystem={false}` for predictable recruiter behavior. `<ThemeProvider>` wrapper at `components/shared/theme-provider.tsx`. Theme toggle button ships in T-4.3._
+  - _Status CSS vars added (`--status-lead`, `--status-customer`, `--status-closed`) for both `:root` and `.dark`, matching CONCEPT.md hex spec (#3B82F6 / #10B981 / #71717A). Dark mode bumps lightness slightly for visibility. Tailwind utilities `bg-status-lead`, `text-status-customer`, etc. are available via `@theme inline` mappings._
+  - _Pathguide review: brought forward `min-w-0 + overflow-x-clip` flex pattern, mobile Sheet reusing the same Sidebar component, and the UserMenu-as-shared-component split. Did NOT adopt pathguide's dark teal sidebar (#0A2420) — clashes with our zinc-neutral aesthetic; we use a light sidebar instead._
 - [ ] **T-4.5** Empty `dashboard/page.tsx` and `customers/page.tsx` stubs that render
 
 ---

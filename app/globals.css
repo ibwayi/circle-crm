@@ -7,9 +7,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-questrial), system-ui, sans-serif;
+  --font-mono: var(--font-questrial), system-ui, sans-serif;
+  --font-heading: var(--font-questrial), system-ui, sans-serif;
+  --color-status-lead: var(--status-lead);
+  --color-status-customer: var(--status-customer);
+  --color-status-closed: var(--status-closed);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -83,6 +86,10 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 286);
   --sidebar-border: oklch(0.92 0.005 286);
   --sidebar-ring: oklch(0.715 0.01 286);
+  /* Status colors — match CONCEPT.md (#3B82F6 / #10B981 / #71717A in OKLCH). */
+  --status-lead: oklch(0.62 0.21 252);
+  --status-customer: oklch(0.71 0.17 162);
+  --status-closed: oklch(0.55 0.014 286);
 }
 
 .dark {
@@ -117,6 +124,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.01 286);
+  /* Status colors — slight lightness bump for visibility on dark surface. */
+  --status-lead: oklch(0.71 0.18 252);
+  --status-customer: oklch(0.78 0.16 162);
+  --status-closed: oklch(0.71 0.01 286);
 }
 
 @layer base {
