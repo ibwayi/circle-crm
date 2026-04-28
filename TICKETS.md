@@ -76,7 +76,8 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - _Server Component shell + Client form (`login-form.tsx`); `(auth)/layout.tsx` centers content; `lib/validations/auth.ts` holds Zod schemas; `<Toaster />` mounted in root layout for the demo-button toast._
   - _Form primitive added late from `https://ui.shadcn.com/r/styles/new-york/form.json` (missing in base-nova preset)._
   - _Used `standardSchemaResolver` from `@hookform/resolvers/standard-schema` instead of `zodResolver`. Reason: `@hookform/resolvers@5.2.2` ships type defs targeted at zod 4.0 and our installed zod 4.3 fails the `_zod.version.minor` check. Standard Schema is version-agnostic and zod 4 implements it._
-- [ ] **T-3.2** Signup page `app/(auth)/signup/page.tsx`
+- [x] **T-3.2** Signup page `app/(auth)/signup/page.tsx`
+  - _Mirrors login: shell + `signup-form.tsx`. Uses `signupSchema` (email + password + confirmPassword with refine). Detects already-registered via `data.user.identities.length === 0` (Supabase privacy default returns success with empty identities for existing emails); error message links to `/login` ("Sign in instead")._
 - [ ] **T-3.3** Auth callback handler + cookie-based session
 - [ ] **T-3.4** Middleware `middleware.ts` that redirects unauthenticated users from `/(app)/*` to `/login`
 - [ ] **T-3.5** Logout action + user menu placeholder in topbar
