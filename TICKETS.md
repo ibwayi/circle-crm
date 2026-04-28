@@ -60,7 +60,10 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 - [x] **T-2.2** Migration `0002_rls.sql` — enable RLS, write policies for both tables
   - _Single `FOR ALL` policy per table, gated on `auth.uid() = user_id`, with explicit `WITH CHECK` for clarity (defaults to `USING` if omitted)._
 - [ ] **T-2.3** Apply migrations to Supabase project (CLI or dashboard SQL editor)
-- [ ] **T-2.4** Generate TypeScript types: `pnpm dlx supabase gen types typescript --project-id <id> > types/database.ts`
+- [x] **T-2.4** Generate TypeScript types: `pnpm dlx supabase gen types typescript --project-id <id> > types/database.ts`
+  - _Generated against project `uwxrjxlaceuoqjrepsav` (PostgrestVersion 14.5). 225 lines, both `customers` and `notes` present with `Row`/`Insert`/`Update` types._
+  - _Limitation: Supabase gen-types does **not** reflect CHECK constraints, so `customers.status` is typed as `string` (not `'lead' | 'customer' | 'closed'`). The union is narrowed manually in `lib/db/customers.ts`. To get a real union from gen-types we'd need to convert the CHECK to a Postgres ENUM — deferred._
+  - _Auth: requires `SUPABASE_ACCESS_TOKEN` (personal token, not project secret). Documented in `.env.example` as a commented-out optional._
 - [ ] **T-2.5** Build typed query helpers in `lib/db/customers.ts` and `lib/db/notes.ts` (CRUD functions, all typed)
 
 ---
