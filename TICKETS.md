@@ -32,9 +32,11 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - App Router, src dir = no, alias `@/*`
   - Strict TS, no ESLint disabled rules
   - _Installed: Next.js **16.2.4**, Tailwind v4, React 19.2, Turbopack default. See `AGENTS.md` for Next 16 breaking-change notes._
-- [ ] **T-1.2** shadcn/ui setup — `pnpm dlx shadcn@latest init`
+- [x] **T-1.2** shadcn/ui setup — `pnpm dlx shadcn@latest init`
   - Style: New York, base color: Zinc, CSS variables: yes
   - Add core primitives: button, input, dialog, dropdown-menu, avatar, badge, table, tabs, sonner
+  - _CLI deviations: 2025 shadcn dropped `--style` and `--base-color` flags (New York is the only style now; color is bundled into themed presets `nova|vega|maia|lyra|mira|luma|sera`). Initialized with `--defaults` → preset `base-nova`, baseColor `neutral`. Palette manually overridden in `app/globals.css` to match CONCEPT.md (Monday-inspired zinc neutral, OKLCH form for Tailwind v4)._
+  - _Installed 15/16 primitives: button, input, label, dialog, dropdown-menu, avatar, badge, table, tabs, sonner, alert-dialog, textarea, card, sheet, skeleton. **Skipped: `form`** — registry entry for `base-nova` is empty (only `new-york` style currently ships it). Add later via direct URL or alternative when first form is needed._
 - [ ] **T-1.3** Supabase client setup (`lib/supabase/client.ts`, `server.ts`, `middleware.ts`)
 - [ ] **T-1.4** Env files: `.env.example` with placeholders + `.env.local` (gitignored, real values)
 - [ ] **T-1.5** Add `DECISIONS.md` and seed it with the first ADR: "Why Supabase + Server Components"
