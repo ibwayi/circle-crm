@@ -28,6 +28,10 @@ A clean, Monday-inspired CRM built as a portfolio project. Will be deployed to *
 
 Always check `AGENTS.md` before using Next.js APIs — it documents v16 breaking changes vs older training data.
 
+Known Next 16 conventions used in this project:
+- Use `proxy.ts` not `middleware.ts` (Next 16 rename — old convention deprecated). Function exported as `proxy`.
+- `cookies()` from `next/headers` is async — always `await cookies()`.
+
 ---
 
 ## Living Documents

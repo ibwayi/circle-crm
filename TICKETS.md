@@ -37,7 +37,10 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - Add core primitives: button, input, dialog, dropdown-menu, avatar, badge, table, tabs, sonner
   - _CLI deviations: 2025 shadcn dropped `--style` and `--base-color` flags (New York is the only style now; color is bundled into themed presets `nova|vega|maia|lyra|mira|luma|sera`). Initialized with `--defaults` → preset `base-nova`, baseColor `neutral`. Palette manually overridden in `app/globals.css` to match CONCEPT.md (Monday-inspired zinc neutral, OKLCH form for Tailwind v4)._
   - _Installed 15/16 primitives: button, input, label, dialog, dropdown-menu, avatar, badge, table, tabs, sonner, alert-dialog, textarea, card, sheet, skeleton. **Skipped: `form`** — registry entry for `base-nova` is empty (only `new-york` style currently ships it). Add later via direct URL or alternative when first form is needed._
-- [ ] **T-1.3** Supabase client setup (`lib/supabase/client.ts`, `server.ts`, `middleware.ts`)
+- [x] **T-1.3** Supabase client setup (`lib/supabase/client.ts`, `server.ts`, `middleware.ts`)
+  - Browser client (`createBrowserClient`), async server client (`createServerClient` + awaited `cookies()`), and `updateSession` helper for the proxy.
+  - _Deviation: root file is **`proxy.ts`** not `middleware.ts` — Next 16 renamed the convention (old name deprecated). Internal helper at `lib/supabase/middleware.ts` keeps the Supabase-canonical name. CLAUDE.md Framework Notes updated._
+  - _Created `.env.local` with placeholders — user must fill real Supabase keys before `pnpm dev`._
 - [ ] **T-1.4** Env files: `.env.example` with placeholders + `.env.local` (gitignored, real values)
 - [ ] **T-1.5** Add `DECISIONS.md` and seed it with the first ADR: "Why Supabase + Server Components"
 - [ ] **T-1.6** Verify `pnpm build` passes and commit clean baseline
