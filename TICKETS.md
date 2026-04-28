@@ -104,7 +104,10 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - _Dark mode wired via `next-themes` with `attribute="class"`, `defaultTheme="light"`, `enableSystem={false}` for predictable recruiter behavior. `<ThemeProvider>` wrapper at `components/shared/theme-provider.tsx`. Theme toggle button ships in T-4.3._
   - _Status CSS vars added (`--status-lead`, `--status-customer`, `--status-closed`) for both `:root` and `.dark`, matching CONCEPT.md hex spec (#3B82F6 / #10B981 / #71717A). Dark mode bumps lightness slightly for visibility. Tailwind utilities `bg-status-lead`, `text-status-customer`, etc. are available via `@theme inline` mappings._
   - _Pathguide review: brought forward `min-w-0 + overflow-x-clip` flex pattern, mobile Sheet reusing the same Sidebar component, and the UserMenu-as-shared-component split. Did NOT adopt pathguide's dark teal sidebar (#0A2420) — clashes with our zinc-neutral aesthetic; we use a light sidebar instead._
-- [ ] **T-4.5** Empty `dashboard/page.tsx` and `customers/page.tsx` stubs that render
+- [x] **T-4.5** Empty `dashboard/page.tsx` and `customers/page.tsx` stubs that render
+  - _Dashboard: header (Dashboard / Welcome back, email) + 4-card stat grid (Total / Leads / Customers / Closed) all showing `—` with "Real numbers in Phase 9" subcaptions._
+  - _Customers: header + dashed-border empty state (Users icon in muted circle, "No customers yet", disabled Add Customer button)._
+  - _Root `app/page.tsx` replaced with `redirect('/dashboard')` — proxy still handles auth gating, this is the explicit route handler._
 
 ---
 
