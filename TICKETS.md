@@ -45,7 +45,8 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - _Both files were already created in T-1.3. Verified `.env.example` carries the three keys and `.env.local` is matched by the `.env*.local` rule in `.gitignore`. Real values populated locally._
 - [x] **T-1.5** Add `DECISIONS.md` and seed it with the first ADR: "Why Supabase + Server Components"
   - _Seeded with two ADRs instead of one: ADR-001 (Supabase + RLS) and ADR-002 (App Router + Server Components). Both decisions inform foundational tickets in Phases 2–4._
-- [ ] **T-1.6** Verify `pnpm build` passes and commit clean baseline
+- [x] **T-1.6** Verify `pnpm build` passes and commit clean baseline
+  - _Build clean (1.4s compile, 1.8s TypeScript). Lockfile up-to-date. File tree audit passed: all living docs, config, code dirs, and `proxy.ts` present at expected locations._
 
 ---
 
