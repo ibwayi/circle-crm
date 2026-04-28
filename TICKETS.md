@@ -64,7 +64,9 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - _Generated against project `uwxrjxlaceuoqjrepsav` (PostgrestVersion 14.5). 225 lines, both `customers` and `notes` present with `Row`/`Insert`/`Update` types._
   - _Limitation: Supabase gen-types does **not** reflect CHECK constraints, so `customers.status` is typed as `string` (not `'lead' | 'customer' | 'closed'`). The union is narrowed manually in `lib/db/customers.ts`. To get a real union from gen-types we'd need to convert the CHECK to a Postgres ENUM — deferred._
   - _Auth: requires `SUPABASE_ACCESS_TOKEN` (personal token, not project secret). Documented in `.env.example` as a commented-out optional._
-- [ ] **T-2.5** Build typed query helpers in `lib/db/customers.ts` and `lib/db/notes.ts` (CRUD functions, all typed)
+- [x] **T-2.5** Build typed query helpers in `lib/db/customers.ts` and `lib/db/notes.ts` (CRUD functions, all typed)
+  - _Each helper takes a `SupabaseClient<Database>` as the first argument so it works with both browser and server clients. All async, all throw on error._
+  - _`CustomerStatus = 'lead' | 'customer' | 'closed'` defined manually (CHECK constraint not in generated types). `getCustomerStats` returns counts + sum of `value_eur` across non-closed rows. Search uses `ilike.%term%` OR'd across name/email/company; `escapeIlike` neutralises `%`, `_`, and `\\` in user input._
 
 ---
 
