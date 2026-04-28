@@ -71,7 +71,7 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 - [ ] **T-4.1** App layout `app/(app)/layout.tsx` with sidebar + topbar (Monday-inspired)
 - [ ] **T-4.2** Sidebar nav: Dashboard, Customers, (View toggle later)
 - [ ] **T-4.3** Topbar: page title, search shortcut hint, user menu (avatar dropdown)
-- [ ] **T-4.4** Theme tokens: review pathguide colors, settle final palette in `app/globals.css`
+- [ ] **T-4.4** Theme tokens + dark mode toggle: review pathguide colors, settle final palette in `app/globals.css`, add `next-themes` provider in root layout, ship a theme toggle component (sun/moon icon in topbar dropdown), persist user choice
 - [ ] **T-4.5** Empty `dashboard/page.tsx` and `customers/page.tsx` stubs that render
 
 ---

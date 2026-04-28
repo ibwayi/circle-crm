@@ -123,6 +123,7 @@ The codebase should be clean enough that the developer can fork it, customize, a
   - Lead: blue (`#3B82F6`)
   - Customer: green (`#10B981`)
   - Closed: gray (`#71717A`)
+- **Dark mode** supported from Phase 4 onward — palette mirrors light mode with inverted neutrals, no separate brand identity.
 
 ### Typography
 - **Sans-serif:** Geist or Inter
