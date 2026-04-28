@@ -89,7 +89,9 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 
 ## Phase 4 — App Shell 🤖
 
-- [ ] **T-4.1** App layout `app/(app)/layout.tsx` with sidebar + topbar (Monday-inspired)
+- [x] **T-4.1** App layout `app/(app)/layout.tsx` with sidebar + topbar (Monday-inspired)
+  - _Server Component layout fetches user, falls back to `redirect('/login')`. Composition inlined (no separate `app-shell.tsx`) — `flex min-h-screen` with `<Sidebar />` aside + main column wrapping `<Topbar />` and `{children}`. `min-w-0 + overflow-x-clip` on the flex column (pathguide pattern) so wide tables won't push the sidebar around._
+  - _`signOut` action moved from `app/(app)/dashboard/actions.ts` to `lib/auth/actions.ts` — reused by both topbar and (eventually) user menu._
 - [ ] **T-4.2** Sidebar nav: Dashboard, Customers, (View toggle later)
 - [ ] **T-4.3** Topbar: page title, search shortcut hint, user menu (avatar dropdown)
 - [x] **T-4.4** Theme tokens + dark mode toggle: review pathguide colors, settle final palette in `app/globals.css`, add `next-themes` provider in root layout, ship a theme toggle component (sun/moon icon in topbar dropdown), persist user choice
