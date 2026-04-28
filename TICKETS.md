@@ -16,12 +16,12 @@
 
 These happen on your machine before Claude Code does anything. Confirm each before proceeding.
 
-- [ ] **T-0.1** Verify local tools installed: `node` (≥20), `pnpm`, `git`, `claude` (Claude Code CLI)
-- [ ] **T-0.2** Create GitHub repo `circle-crm` (public, MIT license, no README — we'll write our own)
-- [ ] **T-0.3** Create new Supabase account (second email) → org → project `circle-crm`
-- [ ] **T-0.4** Create Vercel project, link to GitHub repo (do NOT deploy yet — wait until envs are set)
+- [x] **T-0.1** Verify local tools installed: `node` (≥20), `pnpm`, `git`, `claude` (Claude Code CLI)
+- [x] **T-0.2** Create GitHub repo `circle-crm` (public, MIT license, no README — we'll write our own)
+- [x] **T-0.3** Create new Supabase account (second email) → org → project `circle-crm`
+- [x] **T-0.4** Create Vercel project, link to GitHub repo (do NOT deploy yet — wait until envs are set)
 - [ ] **T-0.5** DNS: add CNAME `crm` → `cname.vercel-dns.com` in your DNS provider for ibwayi.com
-- [ ] **T-0.6** Place `CLAUDE.md`, `CONCEPT.md`, `TICKETS.md` in the repo root and commit
+- [x] **T-0.6** Place `CLAUDE.md`, `CONCEPT.md`, `TICKETS.md` in the repo root and commit
 - [ ] **T-0.7** Run `claude` in the project root and paste the **Initialization Prompt** (provided separately)
 
 ---
