@@ -28,9 +28,10 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 
 ## Phase 1 — Foundation 🤖
 
-- [ ] **T-1.1** Initialize Next.js 15 + TypeScript + Tailwind via `pnpm create next-app`
+- [x] **T-1.1** Initialize Next.js 15 + TypeScript + Tailwind via `pnpm create next-app`
   - App Router, src dir = no, alias `@/*`
   - Strict TS, no ESLint disabled rules
+  - _Note: `create-next-app@latest` resolved to Next.js **16.2.4** (Tailwind v4, React 19.2, Turbopack default). See `AGENTS.md` for Next 16 breaking-change warnings._
 - [ ] **T-1.2** shadcn/ui setup — `pnpm dlx shadcn@latest init`
   - Style: New York, base color: Zinc, CSS variables: yes
   - Add core primitives: button, input, dialog, dropdown-menu, avatar, badge, table, tabs, sonner
