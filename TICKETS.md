@@ -41,8 +41,10 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - Browser client (`createBrowserClient`), async server client (`createServerClient` + awaited `cookies()`), and `updateSession` helper for the proxy.
   - _Deviation: root file is **`proxy.ts`** not `middleware.ts` — Next 16 renamed the convention (old name deprecated). Internal helper at `lib/supabase/middleware.ts` keeps the Supabase-canonical name. CLAUDE.md Framework Notes updated._
   - _Created `.env.local` with placeholders — user must fill real Supabase keys before `pnpm dev`._
-- [ ] **T-1.4** Env files: `.env.example` with placeholders + `.env.local` (gitignored, real values)
-- [ ] **T-1.5** Add `DECISIONS.md` and seed it with the first ADR: "Why Supabase + Server Components"
+- [x] **T-1.4** Env files: `.env.example` with placeholders + `.env.local` (gitignored, real values)
+  - _Both files were already created in T-1.3. Verified `.env.example` carries the three keys and `.env.local` is matched by the `.env*.local` rule in `.gitignore`. Real values populated locally._
+- [x] **T-1.5** Add `DECISIONS.md` and seed it with the first ADR: "Why Supabase + Server Components"
+  - _Seeded with two ADRs instead of one: ADR-001 (Supabase + RLS) and ADR-002 (App Router + Server Components). Both decisions inform foundational tickets in Phases 2–4._
 - [ ] **T-1.6** Verify `pnpm build` passes and commit clean baseline
 
 ---
