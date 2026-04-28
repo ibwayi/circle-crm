@@ -14,13 +14,19 @@ A clean, Monday-inspired CRM built as a portfolio project. Will be deployed to *
 
 ## Tech Stack
 
-- **Framework:** Next.js 15 (App Router) + TypeScript (strict)
+- **Framework:** Next.js 16 (App Router) + TypeScript (strict)
 - **Styling:** Tailwind CSS + shadcn/ui
 - **Database / Auth:** Supabase (Postgres + RLS + Auth)
 - **Validation:** Zod
 - **Package Manager:** pnpm
 - **Deployment:** Vercel
 - **Domain:** crm.ibwayi.com
+
+---
+
+## Framework Notes
+
+Always check `AGENTS.md` before using Next.js APIs — it documents v16 breaking changes vs older training data.
 
 ---
 
