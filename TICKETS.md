@@ -117,11 +117,14 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - _Client Component. Columns: Name (font-medium), Company (muted, "—" fallback), Status (StatusBadge), Value (right-aligned, German EUR formatting via `Intl.NumberFormat('de-DE', { currency: 'EUR' })`, "—" fallback), Last updated (`formatDistanceToNow` with `de` locale + `addSuffix`). Row hover `bg-muted/50`, click navigates to `/customers/[id]`. Returns `null` when empty — page-level empty state handles that case._
 - [x] **T-5.2** Status badges with status colors (Lead blue, Customer green, Closed gray)
   - _`STATUS_CONFIG` map exported from `components/customers/status-badge.tsx` — single source of truth for label + CSS var + Tailwind className. Each status uses the matching `bg-status-X/10` + `text-status-X` + `border-status-X/30` (Linear-style subtle pills, not solid blocks). Reused by Kanban in T-8._
-- [ ] **T-5.3** Status filter tabs above the table (`All | Leads | Customers | Closed`) with counts
-- [ ] **T-5.4** Search input — filters by name, email, company (debounced 200ms)
+- [x] **T-5.3** Status filter tabs above the table (`All | Leads | Customers | Closed`) with counts
+  - _Page (Server Component) awaits `searchParams`, passes filtered list + unfiltered counts down. Skip the second (count) query when no filters are active. Tab change updates `?status=...` via `router.replace` (no scroll, no history pollution); "All" deletes the param._
+- [x] **T-5.4** Search input — filters by name, email, company (debounced 200ms)
+  - _Local state for instant UI response; debounced URL update at 200ms via inline `useDebouncedCallback` hook (ref-based, ~15 lines). Empty input deletes the `search` param. Server-side filtering via `listCustomers({ search })`; `escapeIlike` already neutralises `%`/`_`/`\` in `lib/db/customers.ts`._
 - [x] **T-5.5** Click row → navigate to `customers/[id]`
   - _Row navigation via `useRouter().push()`. Detail page at `app/(app)/customers/[id]/page.tsx` is a Server Component: awaits `params` (Next 16 requirement), fetches `getCustomer`, calls `notFound()` if missing. Renders back link, header with name + company + StatusBadge, Card with field grid (email, phone, value, created, updated — German absolute date format), disabled Edit/Delete buttons (`title` attr "Coming in Phase 6"), and a placeholder "Notes coming in Phase 7" panel._
-- [ ] **T-5.6** Sort by column header click (name, value, last updated)
+- [x] **T-5.6** Sort by column header click (name, value, last updated)
+  - _State lives inside `CustomerTable` (sort happens in-memory on the already-fetched array via `useMemo`). Default `updated_at DESC`. Clicking the active field flips direction; clicking a new field resets to desc. ChevronUp / ChevronDown next to the active header. Status and Company columns are not sortable (kept simple per spec)._
 
 ---
 
