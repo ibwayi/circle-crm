@@ -78,7 +78,10 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - _Used `standardSchemaResolver` from `@hookform/resolvers/standard-schema` instead of `zodResolver`. Reason: `@hookform/resolvers@5.2.2` ships type defs targeted at zod 4.0 and our installed zod 4.3 fails the `_zod.version.minor` check. Standard Schema is version-agnostic and zod 4 implements it._
 - [x] **T-3.2** Signup page `app/(auth)/signup/page.tsx`
   - _Mirrors login: shell + `signup-form.tsx`. Uses `signupSchema` (email + password + confirmPassword with refine). Detects already-registered via `data.user.identities.length === 0` (Supabase privacy default returns success with empty identities for existing emails); error message links to `/login` ("Sign in instead")._
-- [ ] **T-3.3** Auth callback handler + cookie-based session
+- [x] **T-3.3** Auth callback handler + cookie-based session
+  - _`updateSession` now returns `{ response, user }`. `proxy.ts` adds redirect logic — unauthenticated users on non-public paths → `/login`; authenticated users on `/login`, `/signup`, or `/` → `/dashboard`. Set-Cookie headers from session refresh are copied onto redirect responses so the browser doesn't keep stale cookies._
+  - _Stub `app/(app)/layout.tsx` (full shell deferred to Phase 4). `app/(app)/dashboard/page.tsx` reads the session via the server client, renders `user.email` + a sign-out form. `signOut` server action lives in `app/(app)/dashboard/actions.ts`._
+  - _No OAuth callback route yet — email/password auth doesn't need one. T-3.4 (route protection) is the next ticket and will be a thin layer of route-group-level redirect rules atop the proxy already in place._
 - [ ] **T-3.4** Middleware `middleware.ts` that redirects unauthenticated users from `/(app)/*` to `/login`
 - [ ] **T-3.5** Logout action + user menu placeholder in topbar
 

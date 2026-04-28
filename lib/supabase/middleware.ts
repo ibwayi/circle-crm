@@ -1,8 +1,16 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import type { User } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
 
-export async function updateSession(request: NextRequest) {
+export type SessionUpdate = {
+  response: NextResponse
+  user: User | null
+}
+
+export async function updateSession(
+  request: NextRequest
+): Promise<SessionUpdate> {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient<Database>(
@@ -28,7 +36,9 @@ export async function updateSession(request: NextRequest) {
 
   // Refresh the auth session if it's expiring; this also primes
   // request.cookies for downstream Server Components.
-  await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  return supabaseResponse
+  return { response: supabaseResponse, user }
 }

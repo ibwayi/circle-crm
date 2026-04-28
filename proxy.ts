@@ -4,12 +4,53 @@
  * The `middleware.ts` convention was renamed to `proxy.ts` in Next 16.
  * Internal helpers in `lib/supabase/middleware.ts` keep the original name
  * to match Supabase SSR documentation and ergonomics.
+ *
+ * Responsibilities:
+ *   1. Refresh the Supabase auth session on every request.
+ *   2. Redirect unauthenticated users away from protected routes → /login.
+ *   3. Redirect authenticated users away from auth-only routes → /dashboard.
  */
-import { type NextRequest } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { updateSession } from "@/lib/supabase/middleware"
 
+// Routes anyone can hit while signed out.
+const PUBLIC_PATHS = new Set(["/login", "/signup"])
+
+// Routes that authenticated users should be redirected away from.
+// `/` falls in here too — once signed in, the home path goes to the dashboard.
+const AUTH_REDIRECT_PATHS = new Set(["/login", "/signup", "/"])
+
 export async function proxy(request: NextRequest) {
-  return await updateSession(request)
+  const { response, user } = await updateSession(request)
+  const pathname = request.nextUrl.pathname
+
+  if (!user && !PUBLIC_PATHS.has(pathname)) {
+    return redirectWithCookies(request, response, "/login")
+  }
+
+  if (user && AUTH_REDIRECT_PATHS.has(pathname)) {
+    return redirectWithCookies(request, response, "/dashboard")
+  }
+
+  return response
+}
+
+// Redirects must carry over any Set-Cookie headers the session refresh
+// produced, otherwise the browser keeps the stale auth cookies and the
+// next request triggers another refresh.
+function redirectWithCookies(
+  request: NextRequest,
+  sessionResponse: NextResponse,
+  pathname: string
+): NextResponse {
+  const url = request.nextUrl.clone()
+  url.pathname = pathname
+  url.search = ""
+  const redirect = NextResponse.redirect(url)
+  for (const cookie of sessionResponse.cookies.getAll()) {
+    redirect.cookies.set(cookie)
+  }
+  return redirect
 }
 
 export const config = {
