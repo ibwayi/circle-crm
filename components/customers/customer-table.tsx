@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
@@ -21,8 +21,8 @@ import {
 import type { Customer } from "@/lib/db/customers"
 import { cn } from "@/lib/utils"
 
-type SortField = "name" | "value_eur" | "updated_at"
-type SortDirection = "asc" | "desc"
+export type SortField = "name" | "value_eur" | "updated_at"
+export type SortDirection = "asc" | "desc"
 
 const eurFormatter = new Intl.NumberFormat("de-DE", {
   style: "currency",
@@ -37,11 +37,17 @@ function formatRelative(iso: string): string {
   return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: de })
 }
 
-export function CustomerTable({ customers }: { customers: Customer[] }) {
-  const router = useRouter()
-  const [sortField, setSortField] = useState<SortField>("updated_at")
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
-
+export function CustomerTable({
+  customers,
+  sortField,
+  sortDirection,
+  onSortChange,
+}: {
+  customers: Customer[]
+  sortField: SortField
+  sortDirection: SortDirection
+  onSortChange: (field: SortField) => void
+}) {
   const sorted = useMemo(() => {
     const dir = sortDirection === "asc" ? 1 : -1
     return [...customers].sort((a, b) => {
@@ -62,15 +68,6 @@ export function CustomerTable({ customers }: { customers: Customer[] }) {
     })
   }, [customers, sortField, sortDirection])
 
-  function toggleSort(field: SortField) {
-    if (sortField === field) {
-      setSortDirection((d) => (d === "asc" ? "desc" : "asc"))
-    } else {
-      setSortField(field)
-      setSortDirection("desc")
-    }
-  }
-
   // Caller renders the empty state — see /customers page.
   if (customers.length === 0) return null
 
@@ -83,7 +80,7 @@ export function CustomerTable({ customers }: { customers: Customer[] }) {
               field="name"
               activeField={sortField}
               direction={sortDirection}
-              onToggle={toggleSort}
+              onToggle={onSortChange}
             >
               Name
             </SortableTh>
@@ -93,7 +90,7 @@ export function CustomerTable({ customers }: { customers: Customer[] }) {
               field="value_eur"
               activeField={sortField}
               direction={sortDirection}
-              onToggle={toggleSort}
+              onToggle={onSortChange}
               className="text-right"
             >
               Value (€)
@@ -102,7 +99,7 @@ export function CustomerTable({ customers }: { customers: Customer[] }) {
               field="updated_at"
               activeField={sortField}
               direction={sortDirection}
-              onToggle={toggleSort}
+              onToggle={onSortChange}
             >
               Last updated
             </SortableTh>
@@ -110,29 +107,35 @@ export function CustomerTable({ customers }: { customers: Customer[] }) {
         </TableHeader>
         <TableBody>
           {sorted.map((customer) => (
-            <TableRow
-              key={customer.id}
-              onClick={() => router.push(`/customers/${customer.id}`)}
-              className="cursor-pointer hover:bg-muted/50"
-            >
-              <TableCell className="font-medium">{customer.name}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {customer.company ?? "—"}
-              </TableCell>
-              <TableCell>
-                <StatusBadge status={customer.status as CustomerStatus} />
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {formatEur(customer.value_eur)}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {formatRelative(customer.updated_at)}
-              </TableCell>
-            </TableRow>
+            <CustomerRow key={customer.id} customer={customer} />
           ))}
         </TableBody>
       </Table>
     </div>
+  )
+}
+
+function CustomerRow({ customer }: { customer: Customer }) {
+  const router = useRouter()
+  return (
+    <TableRow
+      onClick={() => router.push(`/customers/${customer.id}`)}
+      className="cursor-pointer hover:bg-muted/50"
+    >
+      <TableCell className="font-medium">{customer.name}</TableCell>
+      <TableCell className="text-muted-foreground">
+        {customer.company ?? "—"}
+      </TableCell>
+      <TableCell>
+        <StatusBadge status={customer.status as CustomerStatus} />
+      </TableCell>
+      <TableCell className="text-right tabular-nums">
+        {formatEur(customer.value_eur)}
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {formatRelative(customer.updated_at)}
+      </TableCell>
+    </TableRow>
   )
 }
 

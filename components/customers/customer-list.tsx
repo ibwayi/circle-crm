@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Search, Users } from "lucide-react"
 
-import { CustomerTable } from "@/components/customers/customer-table"
+import {
+  CustomerTable,
+  type SortDirection,
+  type SortField,
+} from "@/components/customers/customer-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -59,11 +63,15 @@ export function CustomerList({
   counts,
   initialStatus,
   initialSearch,
+  sortField,
+  sortDirection,
 }: {
   customers: Customer[]
   counts: Counts
   initialStatus: TabValue
   initialSearch: string
+  sortField: SortField
+  sortDirection: SortDirection
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -72,7 +80,12 @@ export function CustomerList({
   const [searchInput, setSearchInput] = useState(initialSearch)
 
   const updateUrl = useCallback(
-    (next: { status?: TabValue; search?: string }) => {
+    (next: {
+      status?: TabValue
+      search?: string
+      sort?: SortField
+      dir?: SortDirection
+    }) => {
       const params = new URLSearchParams(searchParams.toString())
 
       if (next.status !== undefined) {
@@ -88,6 +101,18 @@ export function CustomerList({
           params.set("search", next.search)
         } else {
           params.delete("search")
+        }
+      }
+
+      // Sort defaults to updated_at DESC. When the URL would resolve to that
+      // anyway, drop the params to keep the address bar clean.
+      if (next.sort !== undefined && next.dir !== undefined) {
+        if (next.sort === "updated_at" && next.dir === "desc") {
+          params.delete("sort")
+          params.delete("dir")
+        } else {
+          params.set("sort", next.sort)
+          params.set("dir", next.dir)
         }
       }
 
@@ -108,6 +133,17 @@ export function CustomerList({
 
   function handleTabChange(value: string) {
     updateUrl({ status: value as TabValue })
+  }
+
+  function handleSortChange(field: SortField) {
+    if (field === sortField) {
+      const nextDir: SortDirection = sortDirection === "asc" ? "desc" : "asc"
+      updateUrl({ sort: field, dir: nextDir })
+    } else {
+      // New field — start at descending (matches the default `updated_at` feel
+      // and is what users typically want for value/updated_at).
+      updateUrl({ sort: field, dir: "desc" })
+    }
   }
 
   return (
@@ -143,9 +179,16 @@ export function CustomerList({
       </div>
 
       {customers.length === 0 ? (
-        <CustomerEmpty searched={initialSearch.length > 0 || initialStatus !== "all"} />
+        <CustomerEmpty
+          searched={initialSearch.length > 0 || initialStatus !== "all"}
+        />
       ) : (
-        <CustomerTable customers={customers} />
+        <CustomerTable
+          customers={customers}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSortChange={handleSortChange}
+        />
       )}
     </div>
   )

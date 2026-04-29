@@ -130,6 +130,8 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 
 ## Phase 6 — Customer CRUD 🤖
 
+- [x] **T-6.0** Persist sort state in URL (Phase-5 follow-up)
+  - _`CustomerTable` is now controlled — sort props + `onSortChange` callback. `CustomerList` propagates URL updates via `router.replace` (no scroll, no history pollution). Page parses `?sort=` and `?dir=` from `searchParams` and validates against the field/direction unions. Default `updated_at`/`desc` is omitted from the URL when active so the address bar stays clean._
 - [ ] **T-6.1** "Add Customer" dialog — form with Zod validation (name required, others optional)
 - [ ] **T-6.2** Edit Customer dialog (reuses form component)
 - [ ] **T-6.3** Delete with confirmation dialog (`shadcn alert-dialog`)
