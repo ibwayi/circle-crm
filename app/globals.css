@@ -52,8 +52,8 @@
 }
 
 :root {
-  /* Monday-inspired clean neutral, zinc-tinted (HSL spec from CONCEPT.md
-     converted to OKLCH for Tailwind v4 / shadcn v4) */
+  /* Monday-inspired clean neutral, zinc-tinted. HSL design spec converted
+     to OKLCH for Tailwind v4 / shadcn v4. */
   --background: oklch(0.985 0 0);              /* ≈ #FAFAFA */
   --foreground: oklch(0.075 0 0);              /* near-black */
   --card: oklch(1 0 0);                        /* pure white */
@@ -86,7 +86,8 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 286);
   --sidebar-border: oklch(0.92 0.005 286);
   --sidebar-ring: oklch(0.715 0.01 286);
-  /* Status colors — match CONCEPT.md (#3B82F6 / #10B981 / #71717A in OKLCH). */
+  /* Status colors — Tailwind blue-500 / emerald-500 / zinc-500
+     (#3B82F6 / #10B981 / #71717A) in OKLCH. */
   --status-lead: oklch(0.62 0.21 252);
   --status-customer: oklch(0.71 0.17 162);
   --status-closed: oklch(0.55 0.014 286);

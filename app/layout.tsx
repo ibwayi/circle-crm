@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/components/shared/theme-provider"
 import "./globals.css"
 
 // Questrial only ships weight 400. We rely on size + tracking for hierarchy
-// rather than swapping to a heavier display font — see CONCEPT.md typography.
+// rather than swapping to a heavier display font.
 const questrial = Questrial({
   variable: "--font-questrial",
   weight: "400",

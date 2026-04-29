@@ -64,7 +64,7 @@ App Router with Server Components as the default; Client Components only where i
 **Status:** Accepted
 
 ### Context
-The original plan (CONCEPT.md) called for two views — a Table and a Kanban. After Phase 5 review the gap between them felt wrong: Table is for scanning, Kanban is for pipeline workflow, but neither serves "I want to see structure without dragging cards around." Monday.com's "grouped table" pattern fills that gap.
+The original plan called for two views — a Table and a Kanban. After Phase 5 review the gap between them felt wrong: Table is for scanning, Kanban is for pipeline workflow, but neither serves "I want to see structure without dragging cards around." Monday.com's "grouped table" pattern fills that gap.
 
 ### Decision
 Ship three views with a single toggle: Table (flat sortable), Groups (collapsible status sections), Kanban (drag-and-drop columns). All three render the same `Customer[]` array — only the layout differs.
@@ -189,7 +189,7 @@ Use `proxy.ts` at the project root. Internal helper at `lib/supabase/middleware.
 - **Wait for `proxy.ts` to stabilize:** it already is — Next 16 is the stable release. Waiting buys nothing.
 
 ### Consequences
-- A reader landing on the codebase via a Supabase tutorial may search for `middleware.ts` and not find it. CLAUDE.md's Framework Notes section calls this out for AI agents reading the repo; the inline comment in `proxy.ts` does the same for human readers.
+- A reader landing on the codebase via a Supabase tutorial may search for `middleware.ts` and not find it. The inline comment at the top of `proxy.ts` calls out the rename for human and AI readers alike.
 - If a future Next version drops the legacy `middleware.ts` support entirely, we're already on the new convention — no migration needed.
 
 ---
@@ -215,7 +215,7 @@ Keep the `base-nova` preset and adapt to Base UI's API. Do not re-init with a Ra
 - **Hand-vendored primitives:** maximum control, but we'd be maintaining what shadcn maintains for free. Not worth the bookkeeping for a portfolio project.
 
 ### Consequences
-Four concrete patterns we had to work around (also flagged in CLAUDE.md's Framework Notes for future AI-agent readers):
+Four concrete patterns we had to work around:
 
 1. **No `asChild` prop.** Base UI uses a `render` prop instead — you pass a React element and Base UI merges its props onto it. For most call sites we just inlined classes onto a native element (`<SheetTrigger className="...">`) or applied `buttonVariants()` to a Next `<Link>` rather than wrapping a Button in a Link.
 2. **Server actions in DropdownMenuItem.** The `<form action={action}><DropdownMenuItem asChild><button type="submit">…</button></DropdownMenuItem></form>` pattern doesn't work without `asChild`. We invoke server actions via `onClick={() => void action()}` instead — Next 16 still routes them through the server-action protocol correctly, the `redirect()` inside the action follows.

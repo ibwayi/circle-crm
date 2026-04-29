@@ -91,7 +91,7 @@ export function CustomerList({
   const [searchInput, setSearchInput] = useState(initialSearch)
 
   // View preference persists in localStorage. Read post-mount to avoid
-  // hydration mismatch — see TICKETS.md T-8.1.
+  // hydration mismatch.
   const [view, setView] = useState<View>("table")
   useEffect(() => {
     const stored = window.localStorage.getItem(VIEW_STORAGE_KEY)

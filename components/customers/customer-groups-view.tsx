@@ -83,7 +83,7 @@ export function CustomerGroupsView({
         const config = STATUS_CONFIG[status]
         const isEmpty = groupCustomers.length === 0
         // Empty groups always render their muted body, regardless of the
-        // saved collapse flag — see TICKETS.md T-8.2 deviation note.
+        // saved collapse flag — there's nothing meaningful to hide.
         const isCollapsed = mounted && collapsed.has(status) && !isEmpty
         const headingId = `group-${status}-heading`
 

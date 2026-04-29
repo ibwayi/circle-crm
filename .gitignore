@@ -39,6 +39,11 @@ yarn-error.log*
 # supabase CLI local state
 supabase/.temp/
 
+# Internal living docs (kept locally only)
+TICKETS.md
+CLAUDE.md
+CONCEPT.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
