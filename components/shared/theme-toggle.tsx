@@ -1,22 +1,18 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  // next-themes can't know the resolved theme on the server, so we render a
-  // stable placeholder until mount to avoid icon flicker during hydration.
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
+  // Render Moon by default. The server has no theme, and `resolvedTheme` is
+  // also undefined on the client's first paint before next-themes hydrates.
+  // After hydration the value resolves and the icon flips to Sun in dark
+  // mode. The brief flip-on-mount is acceptable; the previous mounted-flag
+  // guard is forbidden by `react-hooks/set-state-in-effect`.
   const isDark = resolvedTheme === "dark"
-  const Icon = mounted && isDark ? Sun : Moon
+  const Icon = isDark ? Sun : Moon
 
   return (
     <Button

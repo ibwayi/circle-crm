@@ -1,6 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Columns3, LayoutList, Rows3, Search, Users } from "lucide-react"
 
@@ -39,17 +45,58 @@ const TABS: { value: TabValue; label: string }[] = [
 ]
 
 const VIEW_STORAGE_KEY = "circle:customer-view-default"
+// localStorage's `storage` event only fires for cross-tab writes. Our in-tab
+// changeView dispatches this custom event so useSyncExternalStore re-snapshots
+// without a setState-in-effect mount guard.
+const VIEW_STORAGE_EVENT = "circle:customer-view-change"
+
+const SSR_VIEW: View = "table"
 
 function isView(v: string): v is View {
   return v === "table" || v === "groups" || v === "kanban"
 }
 
+let cachedViewRaw: string | null | undefined = undefined
+let cachedView: View = SSR_VIEW
+
+function readView(): View {
+  let raw: string | null = null
+  try {
+    raw = window.localStorage.getItem(VIEW_STORAGE_KEY)
+  } catch {
+    raw = null
+  }
+  if (raw === cachedViewRaw) return cachedView
+  cachedViewRaw = raw
+  cachedView = raw && isView(raw) ? raw : SSR_VIEW
+  return cachedView
+}
+
+function subscribeView(callback: () => void): () => void {
+  window.addEventListener("storage", callback)
+  window.addEventListener(VIEW_STORAGE_EVENT, callback)
+  return () => {
+    window.removeEventListener("storage", callback)
+    window.removeEventListener(VIEW_STORAGE_EVENT, callback)
+  }
+}
+
+function getServerView(): View {
+  return SSR_VIEW
+}
+
+// Inline debounce — no library needed. The callback ref is updated in an
+// effect (not during render) to satisfy `react-hooks/refs`. The returned
+// function is stable across renders (changes only with `delay`), so callers
+// can safely include it in their own dep arrays.
 function useDebouncedCallback<Args extends unknown[]>(
   callback: (...args: Args) => void,
   delay: number
 ): (...args: Args) => void {
   const callbackRef = useRef(callback)
-  callbackRef.current = callback
+  useEffect(() => {
+    callbackRef.current = callback
+  })
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -90,24 +137,19 @@ export function CustomerList({
 
   const [searchInput, setSearchInput] = useState(initialSearch)
 
-  // View preference persists in localStorage. Read post-mount to avoid
-  // hydration mismatch.
-  const [view, setView] = useState<View>("table")
-  useEffect(() => {
-    const stored = window.localStorage.getItem(VIEW_STORAGE_KEY)
-    if (stored && isView(stored)) {
-      setView(stored)
-    }
-  }, [])
+  // View preference is sourced from localStorage via useSyncExternalStore so
+  // the SSR render and the first client render both see the SSR_VIEW default
+  // (no hydration mismatch), then snap to the saved value on the next paint.
+  const view = useSyncExternalStore(subscribeView, readView, getServerView)
 
-  function changeView(next: View) {
-    setView(next)
+  const changeView = useCallback((next: View) => {
     try {
       window.localStorage.setItem(VIEW_STORAGE_KEY, next)
+      window.dispatchEvent(new Event(VIEW_STORAGE_EVENT))
     } catch {
       // Ignore quota errors.
     }
-  }
+  }, [])
 
   const updateUrl = useCallback(
     (next: {
@@ -317,4 +359,3 @@ function CustomerEmpty({
     </div>
   )
 }
-

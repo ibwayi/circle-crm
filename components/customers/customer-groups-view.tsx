@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useSyncExternalStore } from "react"
 import { ChevronDown, ChevronRight } from "lucide-react"
 
 import {
@@ -16,24 +16,62 @@ import type { Customer } from "@/lib/db/customers"
 import { cn } from "@/lib/utils"
 
 const STORAGE_KEY = "circle:groups-collapsed"
+// localStorage's native `storage` event only fires for cross-tab writes, so
+// our in-tab toggles dispatch this custom event to nudge useSyncExternalStore
+// subscribers in the same tab.
+const STORAGE_EVENT = "circle:groups-collapsed-change"
 const STATUS_ORDER: CustomerStatus[] = ["lead", "customer", "closed"]
 
-function readCollapsed(): Set<CustomerStatus> {
-  if (typeof window === "undefined") return new Set()
+const EMPTY_SET: ReadonlySet<CustomerStatus> = new Set()
+
+// Module-level snapshot cache: useSyncExternalStore expects getSnapshot to
+// return a stable reference whenever the underlying value hasn't changed.
+let cachedRaw: string | null | undefined = undefined
+let cachedSnapshot: ReadonlySet<CustomerStatus> = EMPTY_SET
+
+function readSnapshot(): ReadonlySet<CustomerStatus> {
+  let raw: string | null = null
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return new Set()
+    raw = window.localStorage.getItem(STORAGE_KEY)
+  } catch {
+    raw = null
+  }
+  if (raw === cachedRaw) return cachedSnapshot
+  cachedRaw = raw
+
+  if (!raw) {
+    cachedSnapshot = EMPTY_SET
+    return cachedSnapshot
+  }
+  try {
     const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return new Set()
-    return new Set(
+    if (!Array.isArray(parsed)) {
+      cachedSnapshot = EMPTY_SET
+      return cachedSnapshot
+    }
+    cachedSnapshot = new Set(
       parsed.filter(
         (s): s is CustomerStatus =>
           s === "lead" || s === "customer" || s === "closed"
       )
     )
   } catch {
-    return new Set()
+    cachedSnapshot = EMPTY_SET
   }
+  return cachedSnapshot
+}
+
+function subscribeStorage(callback: () => void): () => void {
+  window.addEventListener("storage", callback)
+  window.addEventListener(STORAGE_EVENT, callback)
+  return () => {
+    window.removeEventListener("storage", callback)
+    window.removeEventListener(STORAGE_EVENT, callback)
+  }
+}
+
+function getServerSnapshot(): ReadonlySet<CustomerStatus> {
+  return EMPTY_SET
 }
 
 export function CustomerGroupsView({
@@ -47,30 +85,26 @@ export function CustomerGroupsView({
   sortDirection: SortDirection
   onSortChange: (field: SortField) => void
 }) {
-  const [collapsed, setCollapsed] = useState<Set<CustomerStatus>>(new Set())
-  const [mounted, setMounted] = useState(false)
+  const collapsed = useSyncExternalStore(
+    subscribeStorage,
+    readSnapshot,
+    getServerSnapshot
+  )
 
-  useEffect(() => {
-    setMounted(true)
-    setCollapsed(readCollapsed())
+  const toggle = useCallback((status: CustomerStatus) => {
+    const next = new Set(readSnapshot())
+    if (next.has(status)) next.delete(status)
+    else next.add(status)
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(Array.from(next))
+      )
+      window.dispatchEvent(new Event(STORAGE_EVENT))
+    } catch {
+      // Ignore quota errors; in-memory state still works for the session.
+    }
   }, [])
-
-  function toggle(status: CustomerStatus) {
-    setCollapsed((prev) => {
-      const next = new Set(prev)
-      if (next.has(status)) next.delete(status)
-      else next.add(status)
-      try {
-        window.localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify(Array.from(next))
-        )
-      } catch {
-        // Ignore quota errors; in-memory state still works for the session.
-      }
-      return next
-    })
-  }
 
   const groups = STATUS_ORDER.map((status) => ({
     status,
@@ -84,7 +118,7 @@ export function CustomerGroupsView({
         const isEmpty = groupCustomers.length === 0
         // Empty groups always render their muted body, regardless of the
         // saved collapse flag — there's nothing meaningful to hide.
-        const isCollapsed = mounted && collapsed.has(status) && !isEmpty
+        const isCollapsed = collapsed.has(status) && !isEmpty
         const headingId = `group-${status}-heading`
 
         return (

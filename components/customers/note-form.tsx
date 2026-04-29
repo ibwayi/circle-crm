@@ -22,17 +22,19 @@ export function NoteForm({ customerId }: { customerId: string }) {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [pending, startTransition] = useTransition()
+  // We need the trimmed length to drive the disable state on the submit
+  // button. `form.watch()` would do it but the React Compiler can't memoise
+  // it (`react-hooks/incompatible-library`), so we track length locally via
+  // the textarea's onChange instead — narrower, predictable, no library
+  // re-render contract.
+  const [contentLength, setContentLength] = useState(0)
 
   const form = useForm<NoteFormValues>({
     resolver: standardSchemaResolver(noteSchema),
     defaultValues: { content: "" },
   })
 
-  // watch() re-renders on every keystroke — fine here since we're only using
-  // it to disable the submit button. The textarea itself is uncontrolled
-  // through react-hook-form so this doesn't double-render the input.
-  const trimmed = form.watch("content").trim()
-  const canSubmit = trimmed.length > 0
+  const canSubmit = contentLength > 0
 
   async function onSubmit(values: NoteFormValues) {
     setSubmitting(true)
@@ -46,6 +48,7 @@ export function NoteForm({ customerId }: { customerId: string }) {
 
     toast.success("Note added")
     form.reset({ content: "" })
+    setContentLength(0)
     startTransition(() => router.refresh())
   }
 
@@ -75,6 +78,10 @@ export function NoteForm({ customerId }: { customerId: string }) {
                   className="min-h-20 max-h-40 resize-none"
                   onKeyDown={handleKeyDown}
                   {...field}
+                  onChange={(e) => {
+                    field.onChange(e)
+                    setContentLength(e.target.value.trim().length)
+                  }}
                 />
               </FormControl>
               <FormMessage />
