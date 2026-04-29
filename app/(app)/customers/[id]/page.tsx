@@ -9,8 +9,10 @@ import {
   type CustomerStatus,
 } from "@/components/customers/status-badge"
 import { CustomerDetailActions } from "@/components/customers/customer-detail-actions"
+import { NotesSection } from "@/components/customers/notes-section"
 import { Card, CardContent } from "@/components/ui/card"
 import { getCustomer } from "@/lib/db/customers"
+import { listNotes } from "@/lib/db/notes"
 import { createClient } from "@/lib/supabase/server"
 
 const eurFormatter = new Intl.NumberFormat("de-DE", {
@@ -40,6 +42,8 @@ export default async function CustomerDetailPage({
   if (!customer) {
     notFound()
   }
+
+  const notes = await listNotes(supabase, customer.id)
 
   return (
     <div className="space-y-6 p-6 md:p-8">
@@ -77,9 +81,7 @@ export default async function CustomerDetailPage({
 
       <CustomerDetailActions customer={customer} />
 
-      <section className="rounded-lg border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground">
-        Notes coming in Phase 7
-      </section>
+      <NotesSection customerId={customer.id} notes={notes} />
     </div>
   )
 }

@@ -9,6 +9,7 @@ import {
   type CustomerInsert,
   type CustomerUpdate,
 } from "@/lib/db/customers"
+import { createNote } from "@/lib/db/notes"
 
 export type CustomerActionResult =
   | { ok: true; customerId: string }
@@ -60,6 +61,38 @@ export async function updateCustomerAction(
     revalidatePath(`/customers/${id}`)
     revalidatePath("/dashboard")
     return { ok: true, customerId: customer.id }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}
+
+export type NoteActionResult =
+  | { ok: true; noteId: string }
+  | { ok: false; error: string }
+
+export async function addNoteAction(
+  customerId: string,
+  content: string
+): Promise<NoteActionResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  const trimmed = content.trim()
+  if (trimmed.length === 0) {
+    return { ok: false, error: "Note can't be empty." }
+  }
+
+  try {
+    const note = await createNote(supabase, {
+      customer_id: customerId,
+      user_id: user.id,
+      content: trimmed,
+    })
+    revalidatePath(`/customers/${customerId}`)
+    return { ok: true, noteId: note.id }
   } catch (e) {
     return { ok: false, error: errorMessage(e) }
   }
