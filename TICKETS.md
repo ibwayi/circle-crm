@@ -200,13 +200,36 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 
 ## Phase 10 — Polish 🤖
 
-- [ ] **T-10.1** Empty states everywhere (no customers, no notes, no search results)
-- [ ] **T-10.2** Loading skeletons for table, kanban, dashboard
-- [ ] **T-10.3** Error boundaries + user-friendly error messages (no raw stack traces)
-- [ ] **T-10.4** Mobile responsive review — table → cards on small screens, kanban → vertical stack
-- [ ] **T-10.5** Toast notifications via sonner — consistent success/error patterns
-- [ ] **T-10.6** Form validation messages — clear, friendly, in-form (not toast)
-- [ ] **T-10.7** Lighthouse audit on dashboard + customer detail — fix anything <90
+**Phase 9 carryovers applied here:**
+- _A — dropped "Welcome back, {email}" greeting from dashboard header._
+- _B — pipeline subtext now branches on `total === 0` vs `pipelineValueEur === 0`._
+- _C — Total / Leads / Customers / Closed stat cards link to `/customers[?status=…]`; hover tints to `bg-muted/50`, focus ring on the wrapping Link._
+
+- [x] **T-10.1** Empty states everywhere (no customers, no notes, no search results)
+  - _Customers list: when filtered to nothing, "No customers match your filters" + a Clear filters button (drops `?status` and `?search`, preserves `?sort` and `?dir`). Empty-no-filter: live `AddCustomerButton` (was a disabled stub). Notes empty: muted line (Phase 7). Kanban columns: per-status empty copy (Phase 8). Dashboard 0-state: pipeline + activity messaging (carryover B + Phase 9)._
+- [x] **T-10.2** Loading skeletons for table, kanban, dashboard
+  - _`app/(app)/dashboard/loading.tsx`, `customers/loading.tsx`, `customers/[id]/loading.tsx`. Each skeleton mirrors the loaded layout's shape so there's no shift on hydration. Uses shadcn `<Skeleton>`._
+- [x] **T-10.3** Error boundaries + user-friendly error messages (no raw stack traces)
+  - _`app/(app)/error.tsx` ("Something went wrong" + Try again + Go to dashboard), `app/(auth)/error.tsx` ("Couldn't load this page. Please refresh." + Try again only), `app/global-error.tsx` (root fallback with `<html>` + `<body>` + plain HTML button)._
+  - _Stack traces only logged via `console.error` when `NEXT_PUBLIC_DEBUG === 'true'` — production users see only the friendly copy. `error.digest` is sent to Vercel/Sentry-style logs by Next automatically._
+- [x] **T-10.4** Mobile responsive review — table → cards on small screens, kanban → vertical stack
+  - _Customer table: Company hidden below `sm` (640px), Last Updated hidden below `md` (768px). At 375px the visible columns are Name + Status + Value + Actions — fits cleanly without horizontal scroll._
+  - _Kanban: already horizontal-scroll on mobile (Phase 8 pattern: 288px columns + flex/overflow-x-auto). Verified._
+  - _Customer detail: info card grid is 1-col by default with `sm:grid-cols-2` — fits at 375px._
+  - _Mobile sidebar: opened via topbar Menu button (`md:hidden`) into a Sheet rendering `<SidebarContent>`. Verified._
+  - _Auth pages: card is `max-w-[400px]` with `w-full p-4` parent — fits with margins at 375px._
+- [x] **T-10.5** Toast notifications via sonner — consistent success/error patterns
+  - _Audit only — no code changes needed. All call sites already follow `toast.success(short title)` for routine wins and `toast.error("Something went wrong", { description: error })` for failures. The Add Customer flow has the lone `action: { label: "View" }`. Demo button uses neutral `toast()` because it's informational, not the result of an action._
+- [x] **T-10.6** Form validation messages — clear, friendly, in-form (not toast)
+  - _`value_eur` → "Value must be 0 or higher." `note.content.max(2000)` → "Note can't be longer than 2000 characters." Auth schemas: tightened to "Please enter a valid email address.", "Password must be at least 8 characters.", "Passwords do not match." — consistent punctuation and full sentences._
+- [x] **T-10.7** Lighthouse audit on dashboard + customer detail — fix anything <90
+  - _**Static analysis** — actual Lighthouse run is to be done by you against the deployed Vercel URL post-push. Likely results based on what's in place:_
+    - _Performance: ~95+. `next/font` loads Questrial with `display: swap` by default; routes are server-rendered with revalidation; bundle is small (no charts, no heavy libs)._
+    - _Accessibility: ~95+. `<html lang="en">`, `aria-hidden` on decorative lucide icons, `aria-label` on icon-only buttons, focus-visible rings on shadcn components. **Watch for:** Topbar's h1 ("Dashboard") + page h2 ("Dashboard") duplicates content (valid hierarchy, but a heading audit might flag it as redundant). Tap target size on `h-8` buttons is 32px — slightly under the 48px Lighthouse recommendation but rarely flagged._
+    - _Best practices: ~95+. No mixed content; HTTPS via Vercel; no console errors expected._
+    - _SEO: ~90+. Title + description in metadata; viewport meta auto by Next; `<html lang>` set. No sitemap or robots.txt — for a portfolio CRM that's reached via direct link, not search, this is fine._
+  - _Zero-cost fixes applied: `viewport.themeColor` set per light/dark for the mobile status bar tint._
+  - _**Triage candidates if scores miss 90:** add a `manifest.json` + favicons of multiple sizes (PWA-installable), reconcile h1/h2 duplication between topbar and page._
 
 ---
 

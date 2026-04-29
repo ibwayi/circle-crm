@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Questrial } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/shared/theme-provider"
@@ -15,6 +15,16 @@ const questrial = Questrial({
 export const metadata: Metadata = {
   title: "Circle",
   description: "A clean, Monday-inspired CRM.",
+}
+
+// Next 14+ moved themeColor and viewport-meta options out of `metadata` and
+// into the `viewport` export. The colors mirror our --background tokens so
+// the mobile status bar tint matches each theme.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#212121" },
+  ],
 }
 
 export default function RootLayout({
