@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
+import { Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
+import { signInAsDemoAction } from "@/app/(auth)/actions"
 import { createClient } from "@/lib/supabase/client"
 import { loginSchema, type LoginInput } from "@/lib/validations/auth"
 import { Button } from "@/components/ui/button"
@@ -23,6 +25,7 @@ import {
 export function LoginForm() {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
+  const [demoPending, startDemoTransition] = useTransition()
   const [authError, setAuthError] = useState<string | null>(null)
 
   const form = useForm<LoginInput>({
@@ -46,16 +49,51 @@ export function LoginForm() {
     router.refresh()
   }
 
+  function handleDemoClick() {
+    startDemoTransition(async () => {
+      const result = await signInAsDemoAction()
+      // On success the action redirects server-side — we only reach here on
+      // error. result is always a { error } object when this resolves.
+      if (result?.error) {
+        toast.error("Couldn't sign in", { description: result.error })
+      }
+    })
+  }
+
   return (
     <div>
+      <Button
+        type="button"
+        size="lg"
+        className="w-full"
+        onClick={handleDemoClick}
+        disabled={demoPending}
+      >
+        <Sparkles className="h-4 w-4" aria-hidden="true" />
+        {demoPending ? "Loading demo…" : "Try as Demo User"}
+      </Button>
+      <p className="mt-2 text-center text-xs text-muted-foreground">
+        Explore the CRM with sample data — no signup needed.
+      </p>
+
+      <div className="my-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          or sign in with your account
+        </span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
           <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel className="text-xs text-muted-foreground">
+                  Email
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -73,7 +111,9 @@ export function LoginForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel className="text-xs text-muted-foreground">
+                  Password
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="password"
@@ -94,38 +134,26 @@ export function LoginForm() {
               {authError}
             </p>
           )}
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <Button
+            type="submit"
+            variant="outline"
+            className="w-full"
+            disabled={submitting}
+          >
             {submitting ? "Signing in…" : "Sign in"}
           </Button>
         </form>
       </Form>
 
-      <p className="mt-4 text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        New to Circle?{" "}
         <Link
           href="/signup"
           className="font-medium text-foreground underline-offset-4 hover:underline"
         >
-          Sign up
+          Create an account
         </Link>
       </p>
-
-      <div className="my-6 flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-xs uppercase tracking-wider text-muted-foreground">
-          or
-        </span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={() => toast("Demo login coming soon")}
-      >
-        Try as Demo User
-      </Button>
     </div>
   )
 }
