@@ -190,8 +190,11 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - _Server Component fetches `getCustomerStats` once. 4 cards in `grid-cols-2 md:grid-cols-4`. Total has no accent; Leads/Customers/Closed each get a 2px top border in their status colour. `tabular-nums` on the number for clean alignment. Tailwind class names mapped explicitly via `ACCENT_CLASS` so the purge keeps the full strings (no `border-t-status-${accent}` templating)._
 - [x] **T-9.2** Pipeline value card (sum of `value_eur` across non-closed customers)
   - _Big EUR number (German formatting via `Intl.NumberFormat`). Subtext: "Across N active deals" (leads + customers, with deal/deals pluralisation). When `pipelineValueEur === 0`: number renders as `—` in muted, subtext switches to "Add value to your customers to track pipeline."_
-- [ ] **T-9.3** Recent activity list (last 5 customer updates by `updated_at`)
-- [ ] **T-9.4** Quick action: "Add Customer" button reusing the dialog from T-6.1
+- [x] **T-9.3** Recent activity list (last 5 customer updates by `updated_at`)
+  - _New `listRecentlyUpdated(client, limit = 5)` helper in `lib/db/customers.ts`. `<RecentActivity>` component renders a divided list inside a card: name (truncate) + StatusBadge + relative German timestamp right-aligned. Each row links to `/customers/[id]`. Empty state: muted "No activity yet. Add your first customer."_
+  - _Dashboard fetches stats and recent in parallel via `Promise.all` for the same render._
+- [x] **T-9.4** Quick action: "Add Customer" button reusing the dialog from T-6.1
+  - _Reuses the existing `<AddCustomerButton>` Client Component (DRY — same dialog, same form, same toast pattern as `/customers`). On success, `createCustomerAction` already revalidates `/dashboard`, so stats and recent activity refresh automatically. Header is now a flex row: title + welcome on the left, button on the right._
 
 ---
 

@@ -49,6 +49,19 @@ export async function listCustomers(
   return data
 }
 
+export async function listRecentlyUpdated(
+  client: Client,
+  limit: number = 5
+): Promise<Customer[]> {
+  const { data, error } = await client
+    .from("customers")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data
+}
+
 export async function getCustomer(
   client: Client,
   id: string

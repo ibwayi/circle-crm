@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation"
 
+import { AddCustomerButton } from "@/components/customers/add-customer-button"
+import { RecentActivity } from "@/components/dashboard/recent-activity"
 import {
   Card,
   CardContent,
@@ -7,7 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { getCustomerStats } from "@/lib/db/customers"
+import {
+  getCustomerStats,
+  listRecentlyUpdated,
+} from "@/lib/db/customers"
 import { createClient } from "@/lib/supabase/server"
 import { cn } from "@/lib/utils"
 
@@ -33,16 +38,22 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  const stats = await getCustomerStats(supabase)
+  const [stats, recent] = await Promise.all([
+    getCustomerStats(supabase),
+    listRecentlyUpdated(supabase, 5),
+  ])
   const activeDeals = stats.leads + stats.customers
 
   return (
     <div className="space-y-8 p-6 md:p-8">
-      <header>
-        <h2 className="text-2xl font-medium tracking-tight">Dashboard</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Welcome back, {user.email}
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-medium tracking-tight">Dashboard</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Welcome back, {user.email}
+          </p>
+        </div>
+        <AddCustomerButton />
       </header>
 
       <section
@@ -76,6 +87,8 @@ export default async function DashboardPage() {
           </p>
         </CardContent>
       </Card>
+
+      <RecentActivity customers={recent} />
     </div>
   )
 }
