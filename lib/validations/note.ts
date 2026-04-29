@@ -4,7 +4,11 @@ import { z } from "zod"
 // past min(1). The form itself stores the user's untrimmed input — we
 // re-trim explicitly in the action call to be safe.
 export const noteSchema = z.object({
-  content: z.string().trim().min(1, "Note can't be empty").max(2000),
+  content: z
+    .string()
+    .trim()
+    .min(1, "Note can't be empty.")
+    .max(2000, "Note can't be longer than 2000 characters."),
 })
 
 export type NoteFormValues = z.infer<typeof noteSchema>

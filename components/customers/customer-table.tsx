@@ -103,7 +103,7 @@ export function CustomerTable({
               >
                 Name
               </SortableTh>
-              <TableHead>Company</TableHead>
+              <TableHead className="hidden sm:table-cell">Company</TableHead>
               <TableHead>Status</TableHead>
               <SortableTh
                 field="value_eur"
@@ -119,6 +119,7 @@ export function CustomerTable({
                 activeField={sortField}
                 direction={sortDirection}
                 onToggle={onSortChange}
+                className="hidden md:table-cell"
               >
                 Last updated
               </SortableTh>
@@ -158,7 +159,7 @@ function CustomerRow({ customer }: { customer: Customer }) {
         className="group cursor-pointer hover:bg-muted/50"
       >
         <TableCell className="font-medium">{customer.name}</TableCell>
-        <TableCell className="text-muted-foreground">
+        <TableCell className="hidden text-muted-foreground sm:table-cell">
           {customer.company ?? "—"}
         </TableCell>
         <TableCell>
@@ -167,7 +168,7 @@ function CustomerRow({ customer }: { customer: Customer }) {
         <TableCell className="text-right tabular-nums">
           {formatEur(customer.value_eur)}
         </TableCell>
-        <TableCell className="text-muted-foreground">
+        <TableCell className="hidden text-muted-foreground md:table-cell">
           {formatRelative(customer.updated_at)}
         </TableCell>
         <TableCell

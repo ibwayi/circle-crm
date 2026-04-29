@@ -9,7 +9,7 @@ export const customerSchema = z.object({
     .string()
     .refine(
       (v) => v === "" || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v),
-      "Please enter a valid email"
+      "Please enter a valid email address."
     ),
   phone: z.string().max(50),
   company: z.string().max(200),
@@ -18,7 +18,7 @@ export const customerSchema = z.object({
     .string()
     .refine(
       (v) => v === "" || (!isNaN(Number(v)) && Number(v) >= 0),
-      "Must be a non-negative number"
+      "Value must be 0 or higher."
     ),
 })
 
