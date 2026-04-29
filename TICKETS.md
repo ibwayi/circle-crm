@@ -235,7 +235,9 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 
 ## Phase 11 — Demo Account & Seed Data 🤖
 
-- [ ] **T-11.1** Seed script `scripts/seed-demo.ts` — creates demo user + ~15 German-flavored customers + notes
+- [x] **T-11.1** Seed script `scripts/seed-demo.ts` — creates demo user + ~15 German-flavored customers + notes
+  - _Runs against the live Supabase project via the service role key (RLS-bypass for cross-user seeding). Idempotent: wipes notes then customers for `DEMO_USER_ID` before re-inserting 15 customers (6 leads / 6 customers / 3 closed) + 10 notes. `pnpm seed` script uses `tsx --env-file=.env.local` so the script picks up local env without a separate dotenv loader. Refactored into `lib/seed/demo-data.ts` in T-11.3 so the cron endpoint reuses the same data._
+  - _Diacritic test names included (Schäfer, Müller, Köhler) to verify rendering. Edge cases seeded: a couple of customers with `null` email or phone. Pipeline value across non-closed: **€277,500** ._
 - [ ] **T-11.2** "Try as Demo User" button on login page — calls a server action that signs in with demo credentials
 - [ ] **T-11.3** Demo refresh strategy: cron-like reset (Vercel Cron or Supabase scheduled function) — resets demo data nightly
 - [ ] **T-11.4** Disable destructive actions for demo user OR wipe-and-reseed nightly (decide trade-off, document in DECISIONS.md)
