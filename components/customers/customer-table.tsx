@@ -57,11 +57,18 @@ export function CustomerTable({
   sortField,
   sortDirection,
   onSortChange,
+  hideHeader = false,
 }: {
   customers: Customer[]
   sortField: SortField
   sortDirection: SortDirection
   onSortChange: (field: SortField) => void
+  /**
+   * Omit the table header — used inside the Groups view where the section
+   * header is the visual heading, so a per-group "Name / Company / …" row
+   * would just be repetitive noise.
+   */
+  hideHeader?: boolean
 }) {
   const sorted = useMemo(() => {
     const dir = sortDirection === "asc" ? 1 : -1
@@ -85,40 +92,42 @@ export function CustomerTable({
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
       <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <SortableTh
-              field="name"
-              activeField={sortField}
-              direction={sortDirection}
-              onToggle={onSortChange}
-            >
-              Name
-            </SortableTh>
-            <TableHead>Company</TableHead>
-            <TableHead>Status</TableHead>
-            <SortableTh
-              field="value_eur"
-              activeField={sortField}
-              direction={sortDirection}
-              onToggle={onSortChange}
-              className="text-right"
-            >
-              Value (€)
-            </SortableTh>
-            <SortableTh
-              field="updated_at"
-              activeField={sortField}
-              direction={sortDirection}
-              onToggle={onSortChange}
-            >
-              Last updated
-            </SortableTh>
-            <TableHead className="w-10">
-              <span className="sr-only">Actions</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
+        {!hideHeader && (
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <SortableTh
+                field="name"
+                activeField={sortField}
+                direction={sortDirection}
+                onToggle={onSortChange}
+              >
+                Name
+              </SortableTh>
+              <TableHead>Company</TableHead>
+              <TableHead>Status</TableHead>
+              <SortableTh
+                field="value_eur"
+                activeField={sortField}
+                direction={sortDirection}
+                onToggle={onSortChange}
+                className="text-right"
+              >
+                Value (€)
+              </SortableTh>
+              <SortableTh
+                field="updated_at"
+                activeField={sortField}
+                direction={sortDirection}
+                onToggle={onSortChange}
+              >
+                Last updated
+              </SortableTh>
+              <TableHead className="w-10">
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+        )}
         <TableBody>
           {sorted.map((customer) => (
             <CustomerRow key={customer.id} customer={customer} />

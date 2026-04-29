@@ -164,12 +164,18 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 
 > Reference: review `/Users/Ibwayi/projects/pathguide` Kanban implementation before coding the kanban portion.
 
-- [ ] **T-8.1** View switcher in customers page header (Table | Groups | Kanban toggle group, lucide icons + labels). Persisted to localStorage as `circle:customer-view-default`. Default on first load: 'table'.
-- [ ] **T-8.2** Groups view — same data as Table but grouped by status into collapsible sections. Headers show status name + count. Each section renders the existing CustomerTable rows. All sections expanded by default; collapse state persisted per-status.
+- [x] **T-8.1** View switcher in customers page header (Table | Groups | Kanban toggle group, lucide icons + labels). Persisted to localStorage as `circle:customer-view-default`. Default on first load: 'table'.
+  - _Lives inside `CustomerList` next to the search input. Status tabs hide in Groups/Kanban view (filtering by status is structurally redundant when columns/sections are status-bucketed). Mounted-guard reads localStorage post-mount to avoid hydration mismatch — anyone with kanban/groups saved sees a brief Table flash on first paint, then resolves._
+  - _Base UI's ToggleGroup uses `value: string[]` + `onValueChange: (string[]) => void` (no Radix-style `type="single"` prop — single-select is just the default `multiple: false`)._
+- [x] **T-8.2** Groups view — same data as Table but grouped by status into collapsible sections. Headers show status name + count. Each section renders the existing CustomerTable rows. All sections expanded by default; collapse state persisted per-status.
+  - _`CustomerTable` gained a `hideHeader` prop so the Groups view's per-section table doesn't repeat "Name | Company | …" rows. The section header (chevron + status dot + label + count) is the visual heading._
+  - _Sort URL params still apply globally — Groups uses the same URL `?sort` so all sections sort consistently. No per-group sort UI (kept simple)._
+  - _Empty groups always render expanded with "No customers in this group." regardless of saved collapse state — the toggle is disabled in that case._
 - [ ] **T-8.3** Kanban board layout — three columns (Lead / Customer / Closed) with column headers + counts. Cards visually distinct from Groups view rows.
 - [ ] **T-8.4** Customer card component for kanban — name, company, value, abbreviated status indicator (uses status border color since column header shows status).
 - [ ] **T-8.5** Drag-and-drop with `@dnd-kit/core` — drop into a column updates customer status in DB via existing `updateCustomerAction`.
-- [ ] **T-8.6** Empty column states ("No leads yet", "No customers yet", "No closed deals yet") — minimal copy.
+- [x] **T-8.6** Empty column states ("No leads yet", "No customers yet", "No closed deals yet") — minimal copy.
+  - _Established in this commit's Groups view ("No customers in this group.") and reused in the Kanban columns next commit. One-line muted copy, no illustrations — fits the rest of Circle's density._
 
 ---
 
