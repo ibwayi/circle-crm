@@ -160,15 +160,16 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 
 ---
 
-## Phase 8 — Kanban View 🤖
+## Phase 8 — Customer Views (Table / Groups / Kanban) 🤖
 
-> Reference: review `/Users/Ibwayi/projects/pathguide` Kanban implementation before coding.
+> Reference: review `/Users/Ibwayi/projects/pathguide` Kanban implementation before coding the kanban portion.
 
-- [ ] **T-8.1** Kanban board layout — three columns (Lead / Customer / Closed) with column headers + counts
-- [ ] **T-8.2** Customer card component — name, company, value, abbreviated state
-- [ ] **T-8.3** Drag-and-drop with `@dnd-kit/core` — drop into a column updates customer status in DB
-- [ ] **T-8.4** View switcher (Table | Kanban) in the customers page header — persisted to localStorage
-- [ ] **T-8.5** Empty column states ("No leads yet")
+- [ ] **T-8.1** View switcher in customers page header (Table | Groups | Kanban toggle group, lucide icons + labels). Persisted to localStorage as `circle:customer-view-default`. Default on first load: 'table'.
+- [ ] **T-8.2** Groups view — same data as Table but grouped by status into collapsible sections. Headers show status name + count. Each section renders the existing CustomerTable rows. All sections expanded by default; collapse state persisted per-status.
+- [ ] **T-8.3** Kanban board layout — three columns (Lead / Customer / Closed) with column headers + counts. Cards visually distinct from Groups view rows.
+- [ ] **T-8.4** Customer card component for kanban — name, company, value, abbreviated status indicator (uses status border color since column header shows status).
+- [ ] **T-8.5** Drag-and-drop with `@dnd-kit/core` — drop into a column updates customer status in DB via existing `updateCustomerAction`.
+- [ ] **T-8.6** Empty column states ("No leads yet", "No customers yet", "No closed deals yet") — minimal copy.
 
 ---
 
