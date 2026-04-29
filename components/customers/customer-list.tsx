@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Columns3, LayoutList, Rows3, Search, Users } from "lucide-react"
 
 import { CustomerGroupsView } from "@/components/customers/customer-groups-view"
+import { CustomerKanban } from "@/components/customers/customer-kanban"
 import {
   CustomerTable,
   type SortDirection,
@@ -254,7 +255,7 @@ export function CustomerList({
           onSortChange={handleSortChange}
         />
       ) : view === "kanban" ? (
-        <KanbanStub />
+        <CustomerKanban customers={customers} />
       ) : (
         <CustomerTable
           customers={customers}
@@ -297,11 +298,3 @@ function CustomerEmpty({ searched }: { searched: boolean }) {
   )
 }
 
-// Kanban view — replaced with the real implementation in the next commit.
-function KanbanStub() {
-  return (
-    <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
-      Kanban view ships in the next commit.
-    </div>
-  )
-}

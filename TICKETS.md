@@ -171,9 +171,14 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - _`CustomerTable` gained a `hideHeader` prop so the Groups view's per-section table doesn't repeat "Name | Company | …" rows. The section header (chevron + status dot + label + count) is the visual heading._
   - _Sort URL params still apply globally — Groups uses the same URL `?sort` so all sections sort consistently. No per-group sort UI (kept simple)._
   - _Empty groups always render expanded with "No customers in this group." regardless of saved collapse state — the toggle is disabled in that case._
-- [ ] **T-8.3** Kanban board layout — three columns (Lead / Customer / Closed) with column headers + counts. Cards visually distinct from Groups view rows.
-- [ ] **T-8.4** Customer card component for kanban — name, company, value, abbreviated status indicator (uses status border color since column header shows status).
-- [ ] **T-8.5** Drag-and-drop with `@dnd-kit/core` — drop into a column updates customer status in DB via existing `updateCustomerAction`.
+- [x] **T-8.3** Kanban board layout — three columns (Lead / Customer / Closed) with column headers + counts. Cards visually distinct from Groups view rows.
+  - _Three columns rendered via `useDroppable`. Column headers carry a status dot + label + count. Each column body scrolls internally (`max-h-[calc(100vh-300px)]`). On mobile (< md) the columns stack horizontally with overflow-x-auto + 288px column width — industry-standard kanban behaviour. On md+ the columns become a 3-col grid with fluid widths._
+- [x] **T-8.4** Customer card component for kanban — name, company, value, abbreviated status indicator (uses status border color since column header shows status).
+  - _4px left border in the status colour, name (font-medium truncate), company (muted truncate), formatted EUR value at the bottom (muted "—" when null). Hover lift via `-translate-y-0.5`. The dragging variant adds a slight rotation + shadow + ring for tactile feel (Linear-style)._
+- [x] **T-8.5** Drag-and-drop with `@dnd-kit/core` — drop into a column updates customer status in DB via existing `updateCustomerAction`.
+  - _`PointerSensor` with `activationConstraint: { distance: 5 }` — small drag threshold so onClick still navigates on a tap._
+  - _`useOptimistic` for the status update: the card moves to its new column the instant the drop fires; the surrounding `startTransition` runs `updateCustomerAction` and `router.refresh()` afterward. On error, the transition ends without changing the underlying customers prop, useOptimistic auto-drops the action, and the card snaps back. Toast.error surfaces the message._
+  - _DragOverlay renders a clone of the card while dragging; the source card slot stays in place at `opacity: 0` so the column doesn't reflow under the cursor._
 - [x] **T-8.6** Empty column states ("No leads yet", "No customers yet", "No closed deals yet") — minimal copy.
   - _Established in this commit's Groups view ("No customers in this group.") and reused in the Kanban columns next commit. One-line muted copy, no illustrations — fits the rest of Circle's density._
 
