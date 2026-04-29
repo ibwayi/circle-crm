@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Columns3, LayoutList, Rows3, Search, Users } from "lucide-react"
 
+import { AddCustomerButton } from "@/components/customers/add-customer-button"
 import { CustomerGroupsView } from "@/components/customers/customer-groups-view"
 import { CustomerKanban } from "@/components/customers/customer-kanban"
 import {
@@ -171,6 +172,16 @@ export function CustomerList({
     }
   }
 
+  function handleClearFilters() {
+    // Preserve sort/dir — only clear status + search.
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("status")
+    params.delete("search")
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    setSearchInput("")
+  }
+
   // Status tabs are useful in Table view (narrow the rows). In Groups view
   // each section already shows its own count, and in Kanban the whole point
   // is seeing all three columns side-by-side — so the status filter would
@@ -246,6 +257,7 @@ export function CustomerList({
       {customers.length === 0 ? (
         <CustomerEmpty
           searched={initialSearch.length > 0 || initialStatus !== "all"}
+          onClearFilters={handleClearFilters}
         />
       ) : view === "groups" ? (
         <CustomerGroupsView
@@ -268,7 +280,13 @@ export function CustomerList({
   )
 }
 
-function CustomerEmpty({ searched }: { searched: boolean }) {
+function CustomerEmpty({
+  searched,
+  onClearFilters,
+}: {
+  searched: boolean
+  onClearFilters: () => void
+}) {
   return (
     <div className="flex min-h-[40vh] items-center justify-center rounded-lg border border-dashed border-border bg-card">
       <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
@@ -285,13 +303,15 @@ function CustomerEmpty({ searched }: { searched: boolean }) {
           <p className="mt-1 text-sm text-muted-foreground">
             {searched
               ? "Try a different status or clear your search."
-              : "Customer creation ships in Phase 6."}
+              : "Add your first customer to get started."}
           </p>
         </div>
-        {!searched && (
-          <Button type="button" disabled title="Coming in Phase 6">
-            Add Customer
+        {searched ? (
+          <Button type="button" variant="outline" onClick={onClearFilters}>
+            Clear filters
           </Button>
+        ) : (
+          <AddCustomerButton />
         )}
       </div>
     </div>
