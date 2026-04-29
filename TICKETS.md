@@ -132,8 +132,12 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 
 - [x] **T-6.0** Persist sort state in URL (Phase-5 follow-up)
   - _`CustomerTable` is now controlled — sort props + `onSortChange` callback. `CustomerList` propagates URL updates via `router.replace` (no scroll, no history pollution). Page parses `?sort=` and `?dir=` from `searchParams` and validates against the field/direction unions. Default `updated_at`/`desc` is omitted from the URL when active so the address bar stays clean._
-- [ ] **T-6.1** "Add Customer" dialog — form with Zod validation (name required, others optional)
-- [ ] **T-6.2** Edit Customer dialog (reuses form component)
+- [x] **T-6.1** "Add Customer" dialog — form with Zod validation (name required, others optional)
+  - _`lib/validations/customer.ts` — `customerSchema` keeps all fields as strings (HTML input shape); empty strings, decimal numbers, and email are validated via refines. `valuesToInput` in the form converts to the DB shape (empty → null, value_eur → number) at submit time. `standardSchemaResolver` (project convention since zod 4.3 broke `zodResolver` 5.2.2 typing)._
+  - _`app/(app)/customers/actions.ts` — `createCustomerAction` and `updateCustomerAction` server actions auth via `createClient`, delegate to `lib/db/customers`, revalidate `/customers`, `/customers/[id]`, and `/dashboard`. Return `{ ok, error|customerId }` so callers can present errors inline._
+  - _`AddCustomerDialog` + `AddCustomerButton` (Client trigger embedded in the Server page header)._
+- [x] **T-6.2** Edit Customer dialog (reuses form component)
+  - _Mirrors Add. `<CustomerForm key={customer.id}>` so default values reset cleanly when switching customers (relevant for T-6.5 row dropdown reuse)._
 - [ ] **T-6.3** Delete with confirmation dialog (`shadcn alert-dialog`)
 - [ ] **T-6.4** Customer detail page `customers/[id]/page.tsx` — header, fields, edit/delete buttons
 - [ ] **T-6.5** Optimistic updates with Toast feedback on success/failure

@@ -8,7 +8,7 @@ import {
   StatusBadge,
   type CustomerStatus,
 } from "@/components/customers/status-badge"
-import { Button } from "@/components/ui/button"
+import { CustomerDetailActions } from "@/components/customers/customer-detail-actions"
 import { Card, CardContent } from "@/components/ui/card"
 import { getCustomer } from "@/lib/db/customers"
 import { createClient } from "@/lib/supabase/server"
@@ -75,26 +75,7 @@ export default async function CustomerDetailPage({
         </CardContent>
       </Card>
 
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled
-          title="Coming in Phase 6"
-        >
-          Edit
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled
-          title="Coming in Phase 6"
-        >
-          Delete
-        </Button>
-      </div>
+      <CustomerDetailActions customer={customer} />
 
       <section className="rounded-lg border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground">
         Notes coming in Phase 7

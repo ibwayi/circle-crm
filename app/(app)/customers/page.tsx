@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { AddCustomerButton } from "@/components/customers/add-customer-button"
 import { CustomerList } from "@/components/customers/customer-list"
 import type {
   SortDirection,
@@ -75,9 +75,7 @@ export default async function CustomersPage({
             Manage your pipeline.
           </p>
         </div>
-        <Button type="button" disabled title="Coming in Phase 6">
-          Add Customer
-        </Button>
+        <AddCustomerButton />
       </header>
 
       <CustomerList
