@@ -9,7 +9,7 @@ import {
   type CustomerInsert,
   type CustomerUpdate,
 } from "@/lib/db/customers"
-import { createNote } from "@/lib/db/notes"
+import { createNote, deleteNote } from "@/lib/db/notes"
 
 export type CustomerActionResult =
   | { ok: true; customerId: string }
@@ -93,6 +93,25 @@ export async function addNoteAction(
     })
     revalidatePath(`/customers/${customerId}`)
     return { ok: true, noteId: note.id }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}
+
+export async function deleteNoteAction(
+  noteId: string,
+  customerId: string
+): Promise<NoteActionResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  try {
+    await deleteNote(supabase, noteId)
+    revalidatePath(`/customers/${customerId}`)
+    return { ok: true, noteId }
   } catch (e) {
     return { ok: false, error: errorMessage(e) }
   }

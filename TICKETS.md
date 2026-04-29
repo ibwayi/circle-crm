@@ -155,7 +155,8 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - _Detail page (Server Component) fetches `listNotes(supabase, id)` after `getCustomer`. Renders `<NotesSection customerId notes>`. Each note: card-like container, `whitespace-pre-wrap` body, German relative time via `formatDistanceToNow` + `de` locale + `addSuffix`. Empty state: muted "No notes yet. Add the first one above."_
 - [x] **T-7.2** Add note: textarea + submit button, instant append
   - _`NoteForm` (Client) — react-hook-form + `standardSchemaResolver`. Schema in `lib/validations/note.ts` (`z.string().trim().min(1).max(2000)`). Submit calls `addNoteAction(customerId, content)` which auth-checks, trims defensively, inserts via `lib/db/notes.createNote`, revalidates `/customers/[id]`. Toast "Note added" on success. ⌘/Ctrl + Return shortcut wired via `onKeyDown` on the Textarea — `event.metaKey || event.ctrlKey` and `event.key === "Enter"` trigger `form.handleSubmit(onSubmit)()` so the same canSubmit gate applies. Hint chip below: `⌘ + Return to add`._
-- [ ] **T-7.3** Delete note (hover-to-show trash icon, confirm via small popover)
+- [x] **T-7.3** Delete note (hover-to-show trash icon, confirm via small popover)
+  - _Hover-revealed Trash2 icon inside each note (always visible on touch). Click opens `DeleteNoteDialog` (small AlertDialog: "Delete this note?" / "This cannot be undone."). Server action `deleteNoteAction(noteId, customerId)` revalidates `/customers/[id]`. Optimistic-ish polish: confirming triggers `pointer-events-none opacity-40` on the article (150ms transition) — visual signal during the action. The fade is reset on cancel or on action error._
 
 ---
 

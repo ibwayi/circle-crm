@@ -29,7 +29,7 @@ export function NotesSection({
       ) : (
         <div className="space-y-3">
           {notes.map((note) => (
-            <NoteItem key={note.id} note={note} />
+            <NoteItem key={note.id} note={note} customerId={customerId} />
           ))}
         </div>
       )}
