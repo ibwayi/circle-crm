@@ -47,3 +47,7 @@ WORKFLOW.md
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local backups and version archives
+*.v1.md
+_backup_*.csv
