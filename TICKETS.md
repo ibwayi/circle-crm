@@ -254,8 +254,11 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 
 ## Phase 12 — Documentation 🤖
 
-- [ ] **T-12.1** Take 4–5 screenshots: login (with demo button visible), dashboard, customer list, kanban, customer detail. Save in `docs/`
-- [ ] **T-12.2** Write `README.md` — hero screenshot, what it does, features, tech stack, architecture decisions, local setup, deploy instructions
+- [x] **T-12.1** Take 4–5 screenshots: login (with demo button visible), dashboard, customer list, kanban, customer detail. Save in `docs/`
+  - _User-provided. 5 PNGs in `docs/`: dashboard.png (3022×1666 HiDPI), customer-detail.png, customers-groups.png, customers-kanban.png, customers-table.png. All non-interlaced 8-bit RGBA between 92K and 264K._
+- [x] **T-12.2** Write `README.md` — hero screenshot, what it does, features, tech stack, architecture decisions, local setup, deploy instructions
+  - _Replaced the create-next-app default. 980 words. Embeds 4 of 5 screenshots inline (dashboard as hero, groups + kanban + detail in feature sections). `customers-table.png` lives in `docs/` but isn't embedded — Table view is described in prose under "Three views for the same data" since adding a 5th screenshot would feel image-heavy._
+  - _Tech stack table is concise (one row per layer + a "Why" column). Architecture summary links to specific ADRs in DECISIONS.md so a reader can drill in. Local-setup section actually works end-to-end (verified each command path)._
 - [x] **T-12.3** Write `LICENSE` (MIT)
   - _MIT licence at project root, copyright 2026 Ibwayi._
 - [x] **T-12.4** Final pass on `DECISIONS.md` — ensure 3–5 ADRs are documented (RLS choice, server actions vs API routes, kanban library, etc.)
