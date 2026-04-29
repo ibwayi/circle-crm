@@ -256,8 +256,10 @@ These happen on your machine before Claude Code does anything. Confirm each befo
 
 - [ ] **T-12.1** Take 4–5 screenshots: login (with demo button visible), dashboard, customer list, kanban, customer detail. Save in `docs/`
 - [ ] **T-12.2** Write `README.md` — hero screenshot, what it does, features, tech stack, architecture decisions, local setup, deploy instructions
-- [ ] **T-12.3** Write `LICENSE` (MIT)
-- [ ] **T-12.4** Final pass on `DECISIONS.md` — ensure 3–5 ADRs are documented (RLS choice, server actions vs API routes, kanban library, etc.)
+- [x] **T-12.3** Write `LICENSE` (MIT)
+  - _MIT licence at project root, copyright 2026 Ibwayi._
+- [x] **T-12.4** Final pass on `DECISIONS.md` — ensure 3–5 ADRs are documented (RLS choice, server actions vs API routes, kanban library, etc.)
+  - _ADR-001 (Supabase + RLS) and ADR-002 (App Router + Server Components) carried over from T-1.5. Added five new ADRs: ADR-003 (Three views), ADR-004 (Server Actions vs API Routes), ADR-005 (`useOptimistic` for kanban DnD), ADR-006 (shared demo DB with nightly reset), ADR-007 (`proxy.ts` rename in Next 16). Each follows the same Context/Decision/Rationale/Alternatives/Consequences shape as the originals._
 
 ---
 
