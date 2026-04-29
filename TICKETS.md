@@ -242,8 +242,13 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - _Server action `signInAsDemoAction()` lives in `app/(auth)/actions.ts`. Reads `DEMO_USER_EMAIL` + `DEMO_USER_PASSWORD` from env (returns generic "Demo isn't configured" if either is missing), calls `supabase.auth.signInWithPassword`, redirects on success. Errors are sanitized — only "Couldn't sign in to the demo account." reaches the client; the upstream Supabase error is logged server-side. The password never appears in any return value, toast, or response._
   - _Login page restructured: demo button is now PRIMARY (full-width, `size="lg"`, Sparkles icon, with subtext "Explore the CRM with sample data — no signup needed"). Divider "or sign in with your account" follows. Email/password form stays below with smaller muted labels and an outline submit button so it visually steps back. Footer link "New to Circle? Create an account."_
   - _Signup page gains a small muted line at the top: "Just want to look around? Try the demo first." linking to `/login`._
-- [ ] **T-11.3** Demo refresh strategy: cron-like reset (Vercel Cron or Supabase scheduled function) — resets demo data nightly
-- [ ] **T-11.4** Disable destructive actions for demo user OR wipe-and-reseed nightly (decide trade-off, document in DECISIONS.md)
+- [x] **T-11.3** Demo refresh strategy: cron-like reset (Vercel Cron or Supabase scheduled function) — resets demo data nightly
+  - _`app/api/cron/reset-demo/route.ts` — GET handler. Validates `Authorization: Bearer <CRON_SECRET>` header (401 on mismatch or missing CRON_SECRET env). Builds a service-role Supabase admin client and runs `seedDemoData(adminClient)`. Returns `{ ok: true, customersInserted, notesInserted, timestamp }` on success, `{ ok: false, error }` on failure._
+  - _Refactor: extracted seed logic into `lib/seed/demo-data.ts` (`seedDemoData(client)` + `SeedResult` type). Both the CLI script and the cron endpoint import it — single source of truth for the sample data._
+  - _Proxy fix: `proxy.ts` now early-returns `response` (no redirect) when `pathname.startsWith("/api/")`, since API routes manage their own auth and shouldn't be bounced to `/login`. Discovered while testing the cron endpoint._
+- [x] **T-11.4** Disable destructive actions for demo user OR wipe-and-reseed nightly (decide trade-off, document in DECISIONS.md)
+  - _Chose **wipe-and-reseed nightly**. `vercel.json` registers `crons: [{ path: "/api/cron/reset-demo", schedule: "0 3 * * *" }]` — runs daily at 03:00 UTC (05:00 Berlin). Recruiters can edit/delete freely during their session; the demo resets overnight._
+  - _Vercel auto-attaches `Authorization: Bearer ${CRON_SECRET}` IFF `CRON_SECRET` is set in Vercel env (all environments). Without that env var the cron job runs but our endpoint rejects with 401 — defense in depth._
 
 ---
 

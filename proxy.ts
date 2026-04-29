@@ -24,6 +24,14 @@ export async function proxy(request: NextRequest) {
   const { response, user } = await updateSession(request)
   const pathname = request.nextUrl.pathname
 
+  // API routes manage their own auth (e.g. /api/cron/reset-demo verifies
+  // CRON_SECRET in its header). The proxy still refreshes any session
+  // cookies that might be present, but it doesn't redirect API requests
+  // to /login — that would break programmatic clients.
+  if (pathname.startsWith("/api/")) {
+    return response
+  }
+
   if (!user && !PUBLIC_PATHS.has(pathname)) {
     return redirectWithCookies(request, response, "/login")
   }
@@ -56,7 +64,9 @@ function redirectWithCookies(
 export const config = {
   matcher: [
     // Match everything except Next internals, image optimization,
-    // and common static assets.
+    // and common static assets. API routes are matched here so that any
+    // session cookies they carry get refreshed; the in-code check inside
+    // `proxy()` skips the page-level redirect logic for `/api/`.
     "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }
