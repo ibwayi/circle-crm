@@ -191,3 +191,35 @@ Use `proxy.ts` at the project root. Internal helper at `lib/supabase/middleware.
 ### Consequences
 - A reader landing on the codebase via a Supabase tutorial may search for `middleware.ts` and not find it. CLAUDE.md's Framework Notes section calls this out for AI agents reading the repo; the inline comment in `proxy.ts` does the same for human readers.
 - If a future Next version drops the legacy `middleware.ts` support entirely, we're already on the new convention — no migration needed.
+
+---
+
+## ADR-008: Stay on Base UI primitives (shadcn/ui base-nova preset)
+**Date:** 2026-04-29
+**Status:** Accepted
+
+### Context
+shadcn/ui's CLI underwent a preset overhaul in 2025: the old "default / new-york" style choice was replaced by named presets (`nova`, `vega`, `maia`, …). When initialised with `--defaults`, the CLI installs the `base-nova` preset, which ships its primitives backed by **Base UI** (`@base-ui/react`) rather than the original Radix UI. Most online tutorials, copy-paste components, and Stack Overflow answers still assume Radix conventions.
+
+### Decision
+Keep the `base-nova` preset and adapt to Base UI's API. Do not re-init with a Radix-based style or vendor primitives by hand.
+
+### Rationale
+- **The preset is integrated end-to-end.** components.json, generated `cn()`, theme tokens in `globals.css`, font registrations, and every primitive we've added (button, dialog, dropdown-menu, sheet, alert-dialog, table, tabs, sonner, skeleton, form, select, toggle-group, …) all assume the same primitive library. Re-initialising mid-project would reseat all of them.
+- **The API surface differences are small and documented.** We hit four concrete quirks across Phases 5–8 (listed below) and adapted in roughly twenty lines of code. Cheaper than swapping primitives.
+- **Base UI is the future direction Radix's authors are moving in.** Base UI is built by the same team and is the explicit successor library. Pinning to old Radix to avoid one round of API migration would mean migrating again later.
+
+### Alternatives considered
+- **Re-init with the new-york preset (Radix-based):** clean fit with most tutorials and `asChild` works everywhere, but burns the whole Phase 1–10 component history. Component.json + globals.css + every UI file would need re-issuing.
+- **Manually install Radix packages alongside Base UI:** mixes two primitive libraries in one tree. Worse than either choice alone — dialogs from one, dropdowns from the other, no consistent mental model.
+- **Hand-vendored primitives:** maximum control, but we'd be maintaining what shadcn maintains for free. Not worth the bookkeeping for a portfolio project.
+
+### Consequences
+Four concrete patterns we had to work around (also flagged in CLAUDE.md's Framework Notes for future AI-agent readers):
+
+1. **No `asChild` prop.** Base UI uses a `render` prop instead — you pass a React element and Base UI merges its props onto it. For most call sites we just inlined classes onto a native element (`<SheetTrigger className="...">`) or applied `buttonVariants()` to a Next `<Link>` rather than wrapping a Button in a Link.
+2. **Server actions in DropdownMenuItem.** The `<form action={action}><DropdownMenuItem asChild><button type="submit">…</button></DropdownMenuItem></form>` pattern doesn't work without `asChild`. We invoke server actions via `onClick={() => void action()}` instead — Next 16 still routes them through the server-action protocol correctly, the `redirect()` inside the action follows.
+3. **ToggleGroup is multi-select by default.** `value: string[]` + `onValueChange: (string[]) => void` + `multiple: false` (default) for single-select. No Radix-style `type="single" value={string}` shorthand. We pass `[view]` and read `arr[0]`.
+4. **`form` primitive missing in base-nova's registry.** When we ran `pnpm dlx shadcn@latest add form` it silently installed nothing — the registry entry is empty for this preset. We installed it from the new-york URL directly: `pnpm dlx shadcn@latest add https://ui.shadcn.com/r/styles/new-york/form.json`. The resulting file uses `react-hook-form` like any other shadcn form and works fine alongside the Base UI components.
+
+If any of these stop working in a future Base UI release, the fallback is a one-shot `pnpm dlx shadcn@latest add --overwrite <component>` to pick up upstream fixes.

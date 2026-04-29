@@ -11,7 +11,7 @@
 
 ## What it does
 
-Circle is a clean, no-bullshit CRM for solo founders and small teams who actually want to open it. The same customer list renders three ways — a sortable table, Monday-style collapsible groups, and a drag-and-drop kanban — backed by Supabase Postgres with row-level security and end-to-end TypeScript from generated DB types to component props. Built as a portfolio piece in 2026 to show what a modern fullstack app looks like in production-feeling shape.
+Circle is a thoughtfully simple CRM for solo founders and small teams who actually want to open it. The same customer list renders three ways — a sortable table, Monday-style collapsible groups, and a drag-and-drop kanban — backed by Supabase Postgres with row-level security and end-to-end TypeScript from generated DB types to component props. Built as a portfolio piece in 2026 to show what a modern fullstack app looks like in production-feeling shape.
 
 ---
 

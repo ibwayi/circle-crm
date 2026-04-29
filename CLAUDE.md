@@ -32,6 +32,12 @@ Known Next 16 conventions used in this project:
 - Use `proxy.ts` not `middleware.ts` (Next 16 rename — old convention deprecated). Function exported as `proxy`.
 - `cookies()` from `next/headers` is async — always `await cookies()`.
 
+Known Base UI quirks (shadcn/ui's `base-nova` preset uses `@base-ui/react`, not Radix — see ADR-008):
+- **No `asChild`.** Use a `render` prop where Base UI exposes one, or inline native styles. For Button-styled links use `buttonVariants()` on `<Link>`.
+- **Server actions in DropdownMenuItem** use `onClick={() => void action()}` rather than the `<form action={…}>` wrapper — `asChild` isn't available to mount the form on the item.
+- **ToggleGroup** is multi-select by default; pass `value: string[]` + `onValueChange: (string[]) => void` and read `arr[0]` for single-select.
+- **`form` primitive** isn't in the base-nova registry. If it ever needs reinstalling, pull from `https://ui.shadcn.com/r/styles/new-york/form.json`.
+
 ---
 
 ## Living Documents
