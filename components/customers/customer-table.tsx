@@ -1,15 +1,30 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronUp,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { de } from "date-fns/locale"
 
+import { DeleteCustomerDialog } from "@/components/customers/delete-customer-dialog"
+import { EditCustomerDialog } from "@/components/customers/edit-customer-dialog"
 import {
   StatusBadge,
   type CustomerStatus,
 } from "@/components/customers/status-badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -55,20 +70,16 @@ export function CustomerTable({
         case "name":
           return a.name.localeCompare(b.name) * dir
         case "value_eur": {
-          // Treat null as 0 — keeps stable ordering without surprising the
-          // user with "missing values floated to the top" weirdness.
           const av = a.value_eur ?? 0
           const bv = b.value_eur ?? 0
           return (av - bv) * dir
         }
         case "updated_at":
-          // ISO timestamp strings sort lexicographically as chronological.
           return a.updated_at.localeCompare(b.updated_at) * dir
       }
     })
   }, [customers, sortField, sortDirection])
 
-  // Caller renders the empty state — see /customers page.
   if (customers.length === 0) return null
 
   return (
@@ -103,6 +114,9 @@ export function CustomerTable({
             >
               Last updated
             </SortableTh>
+            <TableHead className="w-10">
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -117,25 +131,93 @@ export function CustomerTable({
 
 function CustomerRow({ customer }: { customer: Customer }) {
   const router = useRouter()
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  // Suppress row navigation while a dialog is open or the menu is mid-click —
+  // otherwise the underlying TableRow's onClick can fire on the same tap.
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  function handleRowClick() {
+    if (menuOpen || editOpen || deleteOpen) return
+    router.push(`/customers/${customer.id}`)
+  }
+
   return (
-    <TableRow
-      onClick={() => router.push(`/customers/${customer.id}`)}
-      className="cursor-pointer hover:bg-muted/50"
-    >
-      <TableCell className="font-medium">{customer.name}</TableCell>
-      <TableCell className="text-muted-foreground">
-        {customer.company ?? "—"}
-      </TableCell>
-      <TableCell>
-        <StatusBadge status={customer.status as CustomerStatus} />
-      </TableCell>
-      <TableCell className="text-right tabular-nums">
-        {formatEur(customer.value_eur)}
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        {formatRelative(customer.updated_at)}
-      </TableCell>
-    </TableRow>
+    <>
+      <TableRow
+        onClick={handleRowClick}
+        className="group cursor-pointer hover:bg-muted/50"
+      >
+        <TableCell className="font-medium">{customer.name}</TableCell>
+        <TableCell className="text-muted-foreground">
+          {customer.company ?? "—"}
+        </TableCell>
+        <TableCell>
+          <StatusBadge status={customer.status as CustomerStatus} />
+        </TableCell>
+        <TableCell className="text-right tabular-nums">
+          {formatEur(customer.value_eur)}
+        </TableCell>
+        <TableCell className="text-muted-foreground">
+          {formatRelative(customer.updated_at)}
+        </TableCell>
+        <TableCell
+          className="w-10 p-0 pr-2 text-right"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger
+              aria-label={`Actions for ${customer.name}`}
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-md transition-opacity",
+                "hover:bg-muted focus-visible:bg-muted",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                // Always visible on touch devices; hover/focus-only on
+                // pointer-fine devices to keep the row clean.
+                "opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100",
+                menuOpen && "md:opacity-100"
+              )}
+            >
+              <MoreHorizontal
+                className="h-4 w-4 text-muted-foreground"
+                aria-hidden="true"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="cursor-pointer text-destructive"
+                variant="destructive"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TableCell>
+      </TableRow>
+      <EditCustomerDialog
+        customer={customer}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+      <DeleteCustomerDialog
+        customer={customer}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+      />
+    </>
   )
 }
 

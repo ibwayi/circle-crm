@@ -138,9 +138,14 @@ These happen on your machine before Claude Code does anything. Confirm each befo
   - _`AddCustomerDialog` + `AddCustomerButton` (Client trigger embedded in the Server page header)._
 - [x] **T-6.2** Edit Customer dialog (reuses form component)
   - _Mirrors Add. `<CustomerForm key={customer.id}>` so default values reset cleanly when switching customers (relevant for T-6.5 row dropdown reuse)._
-- [ ] **T-6.3** Delete with confirmation dialog (`shadcn alert-dialog`)
-- [ ] **T-6.4** Customer detail page `customers/[id]/page.tsx` — header, fields, edit/delete buttons
-- [ ] **T-6.5** Optimistic updates with Toast feedback on success/failure
+- [x] **T-6.3** Delete with confirmation dialog (`shadcn alert-dialog`)
+  - _`DeleteCustomerDialog` is controlled (no trigger child — cleaner for reuse from row dropdown vs detail page button). `deleteCustomerAction` server action validates auth, delegates to `lib/db/customers`, revalidates `/customers` + `/dashboard`. Success toast: "Customer deleted". Optional `onDeleted` callback so the detail page can navigate back to `/customers`._
+- [x] **T-6.4** Customer detail page `customers/[id]/page.tsx` — header, fields, edit/delete buttons
+  - _`CustomerDetailActions` Client Component owns Edit + Delete dialog state. Buttons no longer disabled. Delete on detail navigates back to `/customers` (via `onDeleted`); the row-dropdown delete just relies on `revalidatePath` + `router.refresh`._
+- [x] **T-6.5** Optimistic updates with Toast feedback on success/failure
+  - _Row hover: 6th narrow column with `MoreHorizontal` trigger. Hidden by default on `md+`, visible on row hover/focus or while the menu is open. Always visible on touch (`opacity-100 md:opacity-0`). DropdownMenu items: Edit (Pencil) + destructive Delete (Trash2). `onClick={(e) => e.stopPropagation()}` on the cell, trigger, and content prevents the row-click navigation from firing._
+  - _Each `CustomerRow` owns its own dialog state, so multiple rows can be opened independently._
+  - _**Strategy chosen: pending state, not full optimistic UI.** `useTransition` + a parallel `submitting` flag drives button disable + label change. On success: `revalidatePath` (server) + `router.refresh()` (client) refetches the table. Trade-off: slight perceived latency vs the complexity of mirroring the mutation in client state and rolling back on failure. Worth it for portfolio scale (≤ a couple hundred rows where the refetch is fast). Genuine optimistic UI is a Phase 10 polish candidate._
 
 ---
 

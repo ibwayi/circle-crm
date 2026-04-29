@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import {
   createCustomer,
+  deleteCustomer,
   updateCustomer,
   type CustomerInsert,
   type CustomerUpdate,
@@ -59,6 +60,25 @@ export async function updateCustomerAction(
     revalidatePath(`/customers/${id}`)
     revalidatePath("/dashboard")
     return { ok: true, customerId: customer.id }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}
+
+export async function deleteCustomerAction(
+  id: string
+): Promise<CustomerActionResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  try {
+    await deleteCustomer(supabase, id)
+    revalidatePath("/customers")
+    revalidatePath("/dashboard")
+    return { ok: true, customerId: id }
   } catch (e) {
     return { ok: false, error: errorMessage(e) }
   }
