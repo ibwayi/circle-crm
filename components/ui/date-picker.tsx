@@ -16,10 +16,12 @@ import {
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
-// The text input speaks German short format ("15.04.2026"). The three
-// patterns cover what users typically type: zero-padded, unpadded, and
-// two-digit years.
-const TYPED_FORMATS = ["dd.MM.yyyy", "d.M.yyyy", "dd.MM.yy"] as const
+// The text input speaks German short format ("15.04.2026"). The mask
+// below enforces DD.MM.YYYY shape on every keystroke, so most paths only
+// need the canonical pattern. We keep `dd.MM.yy` as a fallback so a user
+// who types exactly 6 digits and blurs (e.g., "15.04.20") still parses
+// to 2020 — date-fns picks the century closest to the reference date.
+const TYPED_FORMATS = ["dd.MM.yyyy", "dd.MM.yy"] as const
 const NORMALIZED_FORMAT = "dd.MM.yyyy"
 
 function parseGermanDate(input: string): Date | null {
@@ -30,6 +32,20 @@ function parseGermanDate(input: string): Date | null {
     if (isValid(d)) return d
   }
   return null
+}
+
+// Auto-format DD.MM.YYYY mask. Strips non-digits, caps at 8 digits, and
+// re-inserts dots at positions 2 and 5 as the user types. Idempotent on
+// already-formatted strings — backspacing through "15.04.2" gives "15.04."
+// from the browser, then this helper strips the trailing dot back to
+// "15.04". Pasted strings get the same treatment, which mangles inputs
+// that don't match DD.MM.YYYY shape (e.g. "15.4.2026" → "15.42.026") —
+// acceptable trade-off per the bug spec.
+function formatDateInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 8)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`
+  return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`
 }
 
 function isWithinBounds(d: Date, min?: Date, max?: Date): boolean {
@@ -135,13 +151,36 @@ export function DatePicker({
           type="text"
           inputMode="numeric"
           autoComplete="off"
+          // 10 = "DD.MM.YYYY" (8 digits + 2 dots). The browser caps input
+          // length so the user can't type past a complete date; the mask
+          // above keeps the shape consistent.
+          maxLength={10}
           value={inputValue}
           onChange={(e) => {
-            setInputValue(e.target.value)
-            // Don't commit per-keystroke. The form value stays at its
-            // previous state until blur — avoids jumpy intermediate
-            // commits when the user is still typing.
+            const formatted = formatDateInput(e.target.value)
+            setInputValue(formatted)
             if (error) setError(null)
+            // Eager commit when the user has typed a complete DD.MM.YYYY:
+            // the form sees the value immediately, no need to wait for
+            // blur. Out-of-bounds dates still set the error inline.
+            if (formatted.length === 10) {
+              const parsed = parseGermanDate(formatted)
+              if (parsed && isWithinBounds(parsed, minDate, maxDate)) {
+                lastSyncedRef.current = parsed
+                onChange(parsed)
+              } else if (parsed) {
+                lastSyncedRef.current = null
+                onChange(null)
+                setError("Datum außerhalb des erlaubten Bereichs.")
+              }
+              // Parseable failure at length 10 (e.g. "31.02.2026" — Feb 31
+              // doesn't exist) leaves the form value alone; blur logic
+              // will keep the typed text in place per the unparseable
+              // branch.
+            } else if (formatted === "") {
+              lastSyncedRef.current = null
+              onChange(null)
+            }
           }}
           onBlur={handleBlur}
           placeholder={placeholder}
