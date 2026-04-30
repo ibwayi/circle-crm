@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
+import { format, isValid, parse } from "date-fns"
 import { de } from "date-fns/locale"
 
 import type { Matcher } from "react-day-picker"
 
 import { Calendar } from "@/components/ui/calendar"
+import { Input } from "@/components/ui/input"
 import {
   Popover,
   PopoverContent,
@@ -15,15 +16,34 @@ import {
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
-// Long German format used everywhere dates are surfaced — info cards,
-// detail headers, the trigger button below. "15. April 2026".
-const TRIGGER_FORMAT = "d. MMMM yyyy"
+// The text input speaks German short format ("15.04.2026"). The three
+// patterns cover what users typically type: zero-padded, unpadded, and
+// two-digit years.
+const TYPED_FORMATS = ["dd.MM.yyyy", "d.M.yyyy", "dd.MM.yy"] as const
+const NORMALIZED_FORMAT = "dd.MM.yyyy"
+
+function parseGermanDate(input: string): Date | null {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+  for (const f of TYPED_FORMATS) {
+    const d = parse(trimmed, f, new Date(), { locale: de })
+    if (isValid(d)) return d
+  }
+  return null
+}
+
+function isWithinBounds(d: Date, min?: Date, max?: Date): boolean {
+  if (min && d < min) return false
+  if (max && d > max) return false
+  return true
+}
 
 export type DatePickerProps = {
   value: Date | null
   onChange: (date: Date | null) => void
   // Inclusive bounds. Dates outside the range render greyed-out and
-  // become unselectable in the calendar grid.
+  // become unselectable in the calendar grid; manual typing is also
+  // rejected on blur with an inline error.
   minDate?: Date
   maxDate?: Date
   placeholder?: string
@@ -35,15 +55,31 @@ export function DatePicker({
   onChange,
   minDate,
   maxDate,
-  placeholder = "Datum auswählen",
+  placeholder = "TT.MM.JJJJ",
   disabled,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
 
-  // react-day-picker uses `undefined` for "no selection"; the public API
-  // uses `null` to match the rest of the form layer (Zod nullable, DB
-  // nullable, combobox null sentinel). Translate at the boundary.
-  const selected = value ?? undefined
+  // Local state for the typed string. Decoupled from `value` so a half-
+  // typed "15.4." doesn't get reset on every parent re-render. We only
+  // re-sync from `value` when it changes externally (e.g. calendar pick).
+  const [inputValue, setInputValue] = useState(
+    value ? format(value, NORMALIZED_FORMAT, { locale: de }) : ""
+  )
+  const [error, setError] = useState<string | null>(null)
+  // Track which prop value we're currently mirroring. When the prop
+  // changes from the outside (calendar pick, form reset) we re-sync the
+  // input. When this component itself caused the change (the user typed
+  // a valid date), we skip the re-sync so the user's typing isn't
+  // overwritten by the normalised form.
+  const lastSyncedRef = useRef<Date | null>(value)
+
+  useEffect(() => {
+    if (value === lastSyncedRef.current) return
+    lastSyncedRef.current = value
+    setInputValue(value ? format(value, NORMALIZED_FORMAT, { locale: de }) : "")
+    setError(null)
+  }, [value])
 
   // RDP's `disabled` accepts a Matcher | Matcher[]. Each `before` / `after`
   // matcher is a separate object — they can't be combined on one object.
@@ -54,56 +90,120 @@ export function DatePicker({
   if (minDate) disabledMatchers.push({ before: minDate })
   if (maxDate) disabledMatchers.push({ after: maxDate })
 
+  function commitParsed(parsed: Date) {
+    lastSyncedRef.current = parsed
+    onChange(parsed)
+    setInputValue(format(parsed, NORMALIZED_FORMAT, { locale: de }))
+    setError(null)
+  }
+
+  function handleBlur() {
+    const trimmed = inputValue.trim()
+    if (trimmed === "") {
+      // User cleared the input — commit null and clear any error.
+      lastSyncedRef.current = null
+      onChange(null)
+      setError(null)
+      return
+    }
+    const parsed = parseGermanDate(trimmed)
+    if (!parsed) {
+      // Unparseable — leave the typing in place per spec, no error
+      // (the user is still composing). Don't commit a value.
+      setError(null)
+      return
+    }
+    if (!isWithinBounds(parsed, minDate, maxDate)) {
+      // Out of bounds — null the form value, keep the typed text, show
+      // an inline error so the user knows why.
+      lastSyncedRef.current = null
+      onChange(null)
+      setError("Datum außerhalb des erlaubten Bereichs.")
+      return
+    }
+    commitParsed(parsed)
+  }
+
+  // Best month to show when the calendar first opens — current selection
+  // first, then the closest in-bounds month.
+  const defaultMonth = value ?? maxDate ?? minDate
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        type="button"
-        disabled={disabled}
-        className={cn(
-          "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1 text-left text-sm",
-          "transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          "disabled:cursor-not-allowed disabled:opacity-50"
-        )}
-      >
-        <span className={cn(!value && "text-muted-foreground")}>
-          {value ? format(value, TRIGGER_FORMAT, { locale: de }) : placeholder}
-        </span>
-        <CalendarIcon
-          className="h-4 w-4 shrink-0 text-muted-foreground"
-          aria-hidden="true"
-        />
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          locale={de}
-          selected={selected}
-          // Default the visible month to the current selection or the
-          // closest in-range month so the calendar opens somewhere
-          // useful even before the user picks.
-          defaultMonth={selected ?? maxDate ?? minDate}
-          onSelect={(d) => {
-            onChange(d ?? null)
-            if (d) setOpen(false)
+    <div className="space-y-1">
+      <div className="relative">
+        <Input
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value)
+            // Don't commit per-keystroke. The form value stays at its
+            // previous state until blur — avoids jumpy intermediate
+            // commits when the user is still typing.
+            if (error) setError(null)
           }}
-          disabled={
-            disabledMatchers.length > 0 ? disabledMatchers : undefined
-          }
-          // Show year + month dropdowns when the bounds span more than a
-          // year — useful for birthdays going back to 1900. Otherwise
-          // keep the simpler "Month YYYY" label.
-          captionLayout={
-            minDate && maxDate
-              ? maxDate.getFullYear() - minDate.getFullYear() > 1
-                ? "dropdown"
-                : "label"
-              : "label"
-          }
-          startMonth={minDate}
-          endMonth={maxDate}
+          onBlur={handleBlur}
+          placeholder={placeholder}
+          disabled={disabled}
+          className={cn(
+            "pr-10",
+            error && "border-destructive focus-visible:ring-destructive"
+          )}
+          aria-invalid={!!error || undefined}
         />
-      </PopoverContent>
-    </Popover>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger
+            type="button"
+            disabled={disabled}
+            aria-label="Kalender öffnen"
+            className={cn(
+              "absolute right-1 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md transition-colors",
+              "text-muted-foreground hover:bg-muted hover:text-foreground",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "disabled:cursor-not-allowed disabled:opacity-50"
+            )}
+          >
+            <CalendarIcon className="h-4 w-4" aria-hidden="true" />
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="single"
+              locale={de}
+              selected={value ?? undefined}
+              defaultMonth={defaultMonth}
+              onSelect={(d) => {
+                if (!d) {
+                  lastSyncedRef.current = null
+                  onChange(null)
+                  setInputValue("")
+                  setError(null)
+                  return
+                }
+                commitParsed(d)
+                setOpen(false)
+              }}
+              disabled={
+                disabledMatchers.length > 0 ? disabledMatchers : undefined
+              }
+              captionLayout={
+                minDate && maxDate
+                  ? maxDate.getFullYear() - minDate.getFullYear() > 1
+                    ? "dropdown"
+                    : "label"
+                  : "label"
+              }
+              startMonth={minDate}
+              endMonth={maxDate}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+      {error && (
+        <p className="text-xs text-destructive" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   )
 }

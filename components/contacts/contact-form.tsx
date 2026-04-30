@@ -315,7 +315,6 @@ export function ContactForm(props: Props) {
                     onChange={(d) => field.onChange(dateToIsoDate(d))}
                     minDate={birthdayBounds.min}
                     maxDate={birthdayBounds.max}
-                    placeholder="Geburtstag auswählen"
                   />
                 </FormControl>
                 <FormMessage />

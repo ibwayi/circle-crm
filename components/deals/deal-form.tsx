@@ -387,23 +387,28 @@ export function DealForm(props: Props) {
               <FormItem>
                 <FormLabel>Source</FormLabel>
                 <Select
-                  // Empty string = "(Keine Quelle ausgewählt)" → submits as
-                  // null. Base UI's Select doesn't let an item have an
-                  // empty value, so we map between "" and the sentinel
-                  // here at the field boundary.
-                  value={field.value === "" ? SOURCE_NONE_VALUE : field.value}
+                  // The form stores "" for "no source"; the Select needs a
+                  // non-empty item value (Base UI rejects empty strings), so
+                  // we translate at the boundary. When field.value is "" we
+                  // pass `null` to the Select — no item matches → the
+                  // placeholder shows. Picking the "Keine Auswahl" item
+                  // emits the sentinel; we map it back to "" so the next
+                  // render is a clean placeholder again.
+                  value={field.value === "" ? null : field.value}
                   onValueChange={(v) =>
-                    field.onChange(v === SOURCE_NONE_VALUE ? "" : v)
+                    field.onChange(v === null || v === SOURCE_NONE_VALUE ? "" : v)
                   }
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="(Keine Quelle ausgewählt)" />
+                      <SelectValue placeholder="Quelle auswählen" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     <SelectItem value={SOURCE_NONE_VALUE}>
-                      (Keine Quelle ausgewählt)
+                      <span className="italic text-muted-foreground">
+                        Keine Auswahl
+                      </span>
                     </SelectItem>
                     {DEAL_SOURCES.map((s) => (
                       <SelectItem key={s} value={s}>
