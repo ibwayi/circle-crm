@@ -18,6 +18,14 @@ export type ContactWithCompanySummary = Contact & {
   company: { id: string; name: string } | null
 }
 
+// listContactsWithCounts adds an active-deal count per contact. Same
+// pattern as listCompaniesWithCounts in companies.ts: list first, then
+// batch-fetch from deal_contacts × deals scoped to those contact ids,
+// then tally in JS. No N+1, no count() subqueries.
+export type ContactWithCounts = ContactWithCompanySummary & {
+  active_deal_count: number
+}
+
 // Detail view shape: full contact + full company (or null) + deals it's
 // involved in (with the junction's is_primary flag surfaced).
 export type DealWithPrimaryFlag = Deal & { is_primary: boolean }
@@ -80,6 +88,40 @@ export async function listContacts(
   return [...rows].sort(compareContactsByName)
 }
 
+export async function listContactsWithCounts(
+  client: Client,
+  opts?: { search?: string; companyId?: string | null }
+): Promise<ContactWithCounts[]> {
+  const contacts = await listContacts(client, opts)
+  if (contacts.length === 0) return []
+
+  const contactIds = contacts.map((c) => c.id)
+
+  // Pull each junction row's contact_id alongside the linked deal's
+  // stage. Tally active = stage NOT IN ('won','lost') in JS.
+  const { data: junctionRows, error } = await client
+    .from("deal_contacts")
+    .select("contact_id, deal:deals(stage)")
+    .in("contact_id", contactIds)
+  if (error) throw error
+
+  const activeDealCounts = new Map<string, number>()
+  for (const row of junctionRows ?? []) {
+    const deal = row.deal as { stage: string } | null
+    if (deal && deal.stage !== "won" && deal.stage !== "lost") {
+      activeDealCounts.set(
+        row.contact_id,
+        (activeDealCounts.get(row.contact_id) ?? 0) + 1
+      )
+    }
+  }
+
+  return contacts.map((c) => ({
+    ...c,
+    active_deal_count: activeDealCounts.get(c.id) ?? 0,
+  }))
+}
+
 export async function getContact(
   client: Client,
   id: string
@@ -131,8 +173,12 @@ export async function getContact(
     return [{ ...deal, is_primary: row.is_primary }]
   })
 
-  // Most-recent first; same convention as getCompany.
-  deals.sort((a, b) => b.created_at.localeCompare(a.created_at))
+  // Primary first, then most-recent — the contact detail page wants
+  // the primary deal floated to the top regardless of creation order.
+  deals.sort((a, b) => {
+    if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1
+    return b.created_at.localeCompare(a.created_at)
+  })
 
   return { contact, company, deals }
 }
