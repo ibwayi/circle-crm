@@ -90,7 +90,7 @@ export default async function DealDetailPage({
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-medium tracking-tight">{deal.title}</h2>
+          <h2 className="text-3xl font-medium tracking-tight">{deal.title}</h2>
           {company && (
             <p className="text-sm text-muted-foreground">
               <Link
@@ -188,10 +188,21 @@ export default async function DealDetailPage({
           <CardContent className="pt-6">
             <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
               {deal.source && <Field label="Source" value={deal.source} />}
-              <Field label="Created" value={formatAbsolute(deal.created_at)} />
+              <Field
+                label="Created"
+                value={
+                  <span className="text-xs text-muted-foreground">
+                    {formatAbsolute(deal.created_at)}
+                  </span>
+                }
+              />
               <Field
                 label="Last updated"
-                value={formatAbsolute(deal.updated_at)}
+                value={
+                  <span className="text-xs text-muted-foreground">
+                    {formatAbsolute(deal.updated_at)}
+                  </span>
+                }
               />
             </dl>
           </CardContent>

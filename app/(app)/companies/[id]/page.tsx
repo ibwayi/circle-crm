@@ -61,7 +61,7 @@ export default async function CompanyDetailPage({
       </Link>
 
       <header className="space-y-2">
-        <h2 className="text-2xl font-medium tracking-tight">{company.name}</h2>
+        <h2 className="text-3xl font-medium tracking-tight">{company.name}</h2>
         {company.industry && (
           <p className="text-sm text-muted-foreground">{company.industry}</p>
         )}
@@ -152,7 +152,11 @@ export default async function CompanyDetailPage({
             )}
             <Field
               label="Last updated"
-              value={formatAbsolute(company.updated_at)}
+              value={
+                <span className="text-xs text-muted-foreground">
+                  {formatAbsolute(company.updated_at)}
+                </span>
+              }
             />
           </dl>
         </CardContent>

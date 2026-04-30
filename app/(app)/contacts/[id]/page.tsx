@@ -77,7 +77,7 @@ export default async function ContactDetailPage({
       </Link>
 
       <header className="space-y-2">
-        <h2 className="text-2xl font-medium tracking-tight">{fullName}</h2>
+        <h2 className="text-3xl font-medium tracking-tight">{fullName}</h2>
         {(contact.position || company) && (
           <p className="text-sm text-muted-foreground">
             {contact.position}
@@ -172,7 +172,11 @@ export default async function ContactDetailPage({
             )}
             <Field
               label="Last updated"
-              value={formatAbsolute(contact.updated_at)}
+              value={
+                <span className="text-xs text-muted-foreground">
+                  {formatAbsolute(contact.updated_at)}
+                </span>
+              }
             />
           </dl>
         </CardContent>
