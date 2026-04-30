@@ -27,11 +27,12 @@ function isActive(pathname: string, href: string): boolean {
 
 export function Sidebar({ email }: { email: string }) {
   return (
-    // sticky + h-screen pins the sidebar to the viewport so the account
-    // card at the bottom stays visible while the main content scrolls.
+    // `fixed` (not `sticky`) takes the aside fully out of document flow
+    // so the browser's elastic overscroll can't drag it along with the
+    // page. The main content compensates with `pl-60` in the layout.
     // Mobile uses the topbar's <Sheet> pattern instead — that path is
     // unaffected because this aside is `hidden md:flex`.
-    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-background md:flex">
+    <aside className="fixed left-0 top-0 z-30 hidden h-screen w-60 flex-col border-r border-border bg-background md:flex">
       <SidebarContent email={email} />
     </aside>
   )

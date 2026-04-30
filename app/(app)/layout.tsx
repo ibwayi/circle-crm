@@ -22,11 +22,15 @@ export default async function AppLayout({
   const email = user.email ?? ""
 
   return (
-    <div className="flex min-h-screen bg-background">
+    // The sidebar is `fixed` (see components/shared/sidebar.tsx). The
+    // content column reserves its space via `md:pl-60` so the topbar +
+    // main don't slide under it. Mobile (< md) uses the topbar's Sheet
+    // and the sidebar itself is `hidden`, so no offset is needed there.
+    <div className="min-h-screen bg-background md:pl-60">
       <Sidebar email={email} />
       {/* min-w-0 + overflow-x-clip prevents wide table children from
-          blowing out the flex column and shifting the sidebar. */}
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-x-clip">
+          blowing out the column. */}
+      <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip">
         <Topbar email={email} />
         <main className="min-w-0 flex-1 overflow-x-clip">{children}</main>
       </div>
