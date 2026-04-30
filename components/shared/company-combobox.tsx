@@ -27,11 +27,15 @@ export function CompanyCombobox({
   onChange,
   companies,
   disabled,
+  placeholder = "Select company…",
+  noneLabel = "(No company)",
 }: {
   value: string | null
   onChange: (next: string | null) => void
   companies: CompanyOption[]
   disabled?: boolean
+  placeholder?: string
+  noneLabel?: string
 }) {
   const [open, setOpen] = useState(false)
 
@@ -52,7 +56,7 @@ export function CompanyCombobox({
         )}
       >
         <span className={cn(!selected && "text-muted-foreground")}>
-          {selected?.name ?? "Select company…"}
+          {selected?.name ?? placeholder}
         </span>
         <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
       </PopoverTrigger>
@@ -76,7 +80,7 @@ export function CompanyCombobox({
                   )}
                   aria-hidden="true"
                 />
-                <span className="text-muted-foreground">(No company)</span>
+                <span className="text-muted-foreground">{noneLabel}</span>
               </CommandItem>
               {companies.map((company) => (
                 <CommandItem

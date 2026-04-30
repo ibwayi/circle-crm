@@ -10,7 +10,7 @@ import {
   createContactAction,
   updateContactAction,
 } from "@/app/(app)/contacts/actions"
-import { CompanyCombobox } from "@/components/contacts/company-combobox"
+import { CompanyCombobox } from "@/components/shared/company-combobox"
 import { Button } from "@/components/ui/button"
 import {
   Form,
