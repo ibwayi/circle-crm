@@ -27,7 +27,11 @@ function isActive(pathname: string, href: string): boolean {
 
 export function Sidebar({ email }: { email: string }) {
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-background md:flex">
+    // sticky + h-screen pins the sidebar to the viewport so the account
+    // card at the bottom stays visible while the main content scrolls.
+    // Mobile uses the topbar's <Sheet> pattern instead — that path is
+    // unaffected because this aside is `hidden md:flex`.
+    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-background md:flex">
       <SidebarContent email={email} />
     </aside>
   )
