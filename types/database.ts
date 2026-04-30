@@ -14,6 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      companies: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          industry: string | null
+          name: string
+          phone: string | null
+          size_range: string | null
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          industry?: string | null
+          name: string
+          phone?: string | null
+          size_range?: string | null
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          industry?: string | null
+          name?: string
+          phone?: string | null
+          size_range?: string | null
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      contacts: {
+        Row: {
+          _migrated_from_customer_id: string | null
+          birthday: string | null
+          company_id: string | null
+          created_at: string
+          email: string | null
+          first_name: string
+          id: string
+          last_name: string | null
+          linkedin_url: string | null
+          phone: string | null
+          position: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          _migrated_from_customer_id?: string | null
+          birthday?: string | null
+          company_id?: string | null
+          created_at?: string
+          email?: string | null
+          first_name: string
+          id?: string
+          last_name?: string | null
+          linkedin_url?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          _migrated_from_customer_id?: string | null
+          birthday?: string | null
+          company_id?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string | null
+          linkedin_url?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           company: string | null
@@ -53,34 +151,159 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_contacts: {
+        Row: {
+          contact_id: string
+          created_at: string
+          deal_id: string
+          is_primary: boolean
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          deal_id: string
+          is_primary?: boolean
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          deal_id?: string
+          is_primary?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_contacts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deals: {
+        Row: {
+          closed_at: string | null
+          company_id: string | null
+          created_at: string
+          expected_close_date: string | null
+          id: string
+          priority: string
+          probability: number | null
+          source: string | null
+          stage: string
+          title: string
+          updated_at: string
+          user_id: string
+          value_eur: number | null
+        }
+        Insert: {
+          closed_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          expected_close_date?: string | null
+          id?: string
+          priority?: string
+          probability?: number | null
+          source?: string | null
+          stage?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          value_eur?: number | null
+        }
+        Update: {
+          closed_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          expected_close_date?: string | null
+          id?: string
+          priority?: string
+          probability?: number | null
+          source?: string | null
+          stage?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          value_eur?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
+          company_id: string | null
+          contact_id: string | null
           content: string
           created_at: string
-          customer_id: string
+          customer_id: string | null
+          deal_id: string | null
           id: string
           user_id: string
         }
         Insert: {
+          company_id?: string | null
+          contact_id?: string | null
           content: string
           created_at?: string
-          customer_id: string
+          customer_id?: string | null
+          deal_id?: string | null
           id?: string
           user_id: string
         }
         Update: {
+          company_id?: string | null
+          contact_id?: string | null
           content?: string
           created_at?: string
-          customer_id?: string
+          customer_id?: string | null
+          deal_id?: string | null
           id?: string
           user_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notes_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
         ]
