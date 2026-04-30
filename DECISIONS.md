@@ -223,3 +223,31 @@ Four concrete patterns we had to work around:
 4. **`form` primitive missing in base-nova's registry.** When we ran `pnpm dlx shadcn@latest add form` it silently installed nothing — the registry entry is empty for this preset. We installed it from the new-york URL directly: `pnpm dlx shadcn@latest add https://ui.shadcn.com/r/styles/new-york/form.json`. The resulting file uses `react-hook-form` like any other shadcn form and works fine alongside the Base UI components.
 
 If any of these stop working in a future Base UI release, the fallback is a one-shot `pnpm dlx shadcn@latest add --overwrite <component>` to pick up upstream fixes.
+
+---
+
+## ADR-009: Retire 1.0 customers table after Release 2.0 migration
+**Date:** 2026-04-30
+**Status:** Accepted
+
+### Context
+Release 2.0 replaced the 1.0 single-`customers` model with a four-entity schema: `companies`, `contacts`, `deals`, and `deal_contacts` (with notes pivoted to a polymorphic FK in 0007). Migration 0008 re-parented the demo user's existing customer rows: each `customer` became one new `contact` (1:1) and one new `deal` (1:1, stage mapped: `lead`→`lead`, `customer`→`won`, `closed`→`lost`), and notes were re-pointed at the new deal where the migration pattern fit. The customers table, the `notes.customer_id` column, and the `_migrated_from_customer_id` marker column on contacts were preserved through Phase 16 — an intentional choice so that `main` was deployable at every commit during the Release 2.0 ladder (Phases 14 → 21).
+
+### Decision
+With Phase 16 deployed and verified live (sidebar switched, `/customers` redirected, customer-only components removed, dashboard rebuilt around `getDealStats`), Migration 0009 drops the customers table, the marker column, and the legacy `notes.customer_id` column. The polymorphic notes CHECK constraint and ownership trigger function are simplified from four branches (customer / company / contact / deal) to three.
+
+### Rationale
+- **Two clean boundaries beat one tangled one.** Splitting the schema migration (0008) from the data-cleanup migration (0009) means each step is auditable and reversible up to a point. 0008 added without removing; 0009 removes after the new schema has carried real traffic.
+- **The customers table was a constant lint to look at.** Every new entity helper (`lib/db/companies.ts`, `lib/db/deals.ts`) had a peer file (`lib/db/customers.ts`) that documented "still here, don't use." The TS type pulled the full customers row shape into every Database type unionisation. Cleaning that up is worth a migration on its own.
+- **Polymorphic notes is simpler with three branches.** The four-FK CHECK and trigger function had a defensive branch for a parent type the app no longer creates. Dropping it removes a code path that could only ever be exercised by a row written before 0009 ran — a row that no longer exists post-DROP TABLE.
+
+### Alternatives considered
+- **Combine 0008 and 0009 into one migration.** Tempting from a "just do the swap" angle, but it would couple data movement to data destruction in a single non-revertible step. If anything went wrong with 0008, recovery would mean restoring backups; with the split, 0008 alone is already revertible by manually re-pointing notes.
+- **Soft-delete the customers table** (rename to `_archived_customers`, keep around). Adds permanent dead schema for no production benefit; backups already exist on the 2026-04-30 pre-drop snapshot.
+- **Keep `notes.customer_id` "just in case."** Defeats the purpose of polymorphic notes — every new note already chooses one of three parents, and there's no way to write a customer-arm note when the customers table is gone.
+
+### Consequences
+- The hybrid migration strategy (lead → lead, customer → won, closed → lost) is documented inline in 0008's docstring.
+- Pre-drop CSV backups of `customers` and `notes` (rows where `customer_id IS NOT NULL`) were taken on 2026-04-30 (locally, not committed). They're the only recovery path for any row that didn't make it through the 0008 mapping.
+- `lib/seed/demo-data.ts` is now a no-op stub — Phase 22 will rewrite it as a real 2.0 entity seed (companies + contacts + deals + polymorphic notes). Until then, the demo user's data is what 0008 left in place; the nightly cron runs without writes.
+- The route table still includes `/customers` and `/customers/[id]`, but only as 307 redirects to `/deals`. Old bookmarks land somewhere useful instead of 404'ing. These stubs can be removed in any future release if needed; their cost is two two-line files.

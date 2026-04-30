@@ -6,11 +6,10 @@ import { createNote, deleteNote, type CreateNoteInput } from "@/lib/db/notes"
 
 // Discriminated union mirroring CreateNoteInput (without `userId` — the
 // action injects that from the session). Keeping the action's surface in
-// terms of "target" rather than four parallel functions means the client
+// terms of "target" rather than three parallel functions means the client
 // component holds a single addNoteAction reference and the server is the
 // only place that has to know which FK column maps to which entity.
 export type NotesTarget =
-  | { type: "customer"; customerId: string }
   | { type: "company"; companyId: string }
   | { type: "contact"; contactId: string }
   | { type: "deal"; dealId: string }
@@ -26,8 +25,6 @@ function errorMessage(e: unknown): string {
 
 function pathForTarget(target: NotesTarget): string {
   switch (target.type) {
-    case "customer":
-      return `/customers/${target.customerId}`
     case "company":
       return `/companies/${target.companyId}`
     case "contact":
@@ -43,8 +40,6 @@ function createInputForTarget(
   userId: string
 ): CreateNoteInput {
   switch (target.type) {
-    case "customer":
-      return { customerId: target.customerId, content, userId }
     case "company":
       return { companyId: target.companyId, content, userId }
     case "contact":

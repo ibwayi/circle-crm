@@ -58,7 +58,6 @@ export type Database = {
       }
       contacts: {
         Row: {
-          _migrated_from_customer_id: string | null
           birthday: string | null
           company_id: string | null
           created_at: string
@@ -73,7 +72,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          _migrated_from_customer_id?: string | null
           birthday?: string | null
           company_id?: string | null
           created_at?: string
@@ -88,7 +86,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          _migrated_from_customer_id?: string | null
           birthday?: string | null
           company_id?: string | null
           created_at?: string
@@ -111,45 +108,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      customers: {
-        Row: {
-          company: string | null
-          created_at: string
-          email: string | null
-          id: string
-          name: string
-          phone: string | null
-          status: string
-          updated_at: string
-          user_id: string
-          value_eur: number | null
-        }
-        Insert: {
-          company?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          name: string
-          phone?: string | null
-          status?: string
-          updated_at?: string
-          user_id: string
-          value_eur?: number | null
-        }
-        Update: {
-          company?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          name?: string
-          phone?: string | null
-          status?: string
-          updated_at?: string
-          user_id?: string
-          value_eur?: number | null
-        }
-        Relationships: []
       }
       deal_contacts: {
         Row: {
@@ -252,7 +210,6 @@ export type Database = {
           contact_id: string | null
           content: string
           created_at: string
-          customer_id: string | null
           deal_id: string | null
           id: string
           user_id: string
@@ -262,7 +219,6 @@ export type Database = {
           contact_id?: string | null
           content: string
           created_at?: string
-          customer_id?: string | null
           deal_id?: string | null
           id?: string
           user_id: string
@@ -272,7 +228,6 @@ export type Database = {
           contact_id?: string | null
           content?: string
           created_at?: string
-          customer_id?: string | null
           deal_id?: string | null
           id?: string
           user_id?: string
@@ -290,13 +245,6 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notes_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
