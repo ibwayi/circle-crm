@@ -14,9 +14,11 @@ import { de } from "date-fns/locale"
 
 import { CompanyDetailActions } from "@/components/companies/company-detail-actions"
 import { StageBadge, type DealStage } from "@/components/deals/stage-badge"
+import { NotesSection } from "@/components/shared/notes-section"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { getCompany } from "@/lib/db/companies"
+import { listNotesForCompany } from "@/lib/db/notes"
 import { createClient } from "@/lib/supabase/server"
 
 const eurFormatter = new Intl.NumberFormat("de-DE", {
@@ -46,6 +48,7 @@ export default async function CompanyDetailPage({
   }
 
   const { company, contacts, deals } = result
+  const notes = await listNotesForCompany(supabase, company.id)
 
   return (
     <div className="space-y-6 p-6 md:p-8">
@@ -159,7 +162,10 @@ export default async function CompanyDetailPage({
 
       <DealsSection deals={deals} />
 
-      <NotesPlaceholder />
+      <NotesSection
+        target={{ type: "company", companyId: company.id }}
+        initialNotes={notes}
+      />
     </div>
   )
 }
@@ -303,15 +309,3 @@ function DealsSection({
   )
 }
 
-function NotesPlaceholder() {
-  return (
-    <section aria-labelledby="notes-heading" className="space-y-3">
-      <h3 id="notes-heading" className="text-base font-medium">
-        Notes
-      </h3>
-      <p className="rounded-md border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-        Notes are coming in Phase 19.
-      </p>
-    </section>
-  )
-}
