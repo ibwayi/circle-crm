@@ -10,15 +10,15 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Columns3, LayoutList, Rows3, Search, TrendingUp } from "lucide-react"
 
-import {
-  DealGroupsView,
-} from "@/components/deals/deal-groups-view"
+import { AddDealButton } from "@/components/deals/add-deal-button"
+import { DealGroupsView } from "@/components/deals/deal-groups-view"
 import { DealKanban } from "@/components/deals/deal-kanban"
 import {
   DealTable,
   type DealSortField,
   type SortDirection,
 } from "@/components/deals/deal-table"
+import type { ContactOption } from "@/components/shared/contact-combobox"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -118,6 +118,8 @@ export function DealsList({
   initialSearch,
   sortField,
   sortDirection,
+  companies,
+  contacts,
 }: {
   deals: DealWithRelations[]
   counts: DealCounts
@@ -125,6 +127,8 @@ export function DealsList({
   initialSearch: string
   sortField: DealSortField
   sortDirection: SortDirection
+  companies: { id: string; name: string }[]
+  contacts: ContactOption[]
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -289,6 +293,8 @@ export function DealsList({
         <DealsEmpty
           searched={initialSearch.length > 0 || initialStage !== "all"}
           onClearFilters={handleClearFilters}
+          companies={companies}
+          contacts={contacts}
         />
       ) : view === "groups" ? (
         <DealGroupsView
@@ -314,9 +320,13 @@ export function DealsList({
 function DealsEmpty({
   searched,
   onClearFilters,
+  companies,
+  contacts,
 }: {
   searched: boolean
   onClearFilters: () => void
+  companies: { id: string; name: string }[]
+  contacts: ContactOption[]
 }) {
   return (
     <div className="flex min-h-[40vh] items-center justify-center rounded-lg border border-dashed border-border bg-card">
@@ -342,9 +352,11 @@ function DealsEmpty({
             Clear filters
           </Button>
         ) : (
-          <Button type="button" variant="outline" disabled title="Add Deal UI coming in Phase 21">
-            Add deal
-          </Button>
+          <AddDealButton
+            companies={companies}
+            contacts={contacts}
+            variant="outline"
+          />
         )}
       </div>
     </div>

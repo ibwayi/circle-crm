@@ -1,11 +1,12 @@
-import { Plus } from "lucide-react"
-
-import { DealsList, type DealCounts } from "@/components/deals/deals-list"
+import { AddDealButton } from "@/components/deals/add-deal-button"
 import type {
   DealSortField,
   SortDirection,
 } from "@/components/deals/deal-table"
-import { Button } from "@/components/ui/button"
+import { DealsList, type DealCounts } from "@/components/deals/deals-list"
+import type { ContactOption } from "@/components/shared/contact-combobox"
+import { listCompanies } from "@/lib/db/companies"
+import { listContacts } from "@/lib/db/contacts"
 import { listDeals, type DealStage } from "@/lib/db/deals"
 import { createClient } from "@/lib/supabase/server"
 
@@ -63,7 +64,14 @@ export default async function DealsPage({
 
   const supabase = await createClient()
 
-  const filtered = await listDeals(supabase, { stage, search })
+  // The Add Deal dialog needs companies + contacts for its comboboxes.
+  // Fetch alongside the main list so the page renders in one round-trip.
+  const [filtered, companiesFull, contactsFull] = await Promise.all([
+    listDeals(supabase, { stage, search }),
+    listCompanies(supabase),
+    listContacts(supabase),
+  ])
+
   // Counts are computed off an unfiltered set so the tab counters reflect
   // the full pipeline regardless of the active filter. When no filters are
   // active the unfiltered list IS the filtered list — skip the duplicate
@@ -80,6 +88,17 @@ export default async function DealsPage({
     lost: all.filter((d) => d.stage === "lost").length,
   }
 
+  const companies = companiesFull.map((c) => ({ id: c.id, name: c.name }))
+  const contacts: ContactOption[] = contactsFull.map((c) => ({
+    id: c.id,
+    first_name: c.first_name,
+    last_name: c.last_name,
+    email: c.email,
+    position: c.position,
+    company_id: c.company_id,
+    company_name: c.company?.name ?? null,
+  }))
+
   return (
     <div className="space-y-6 p-6 md:p-8">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -89,15 +108,11 @@ export default async function DealsPage({
             Deals across all stages.
           </p>
         </div>
-        <Button
-          type="button"
+        <AddDealButton
+          companies={companies}
+          contacts={contacts}
           variant="outline"
-          disabled
-          title="Add Deal UI coming in Phase 21"
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Add deal
-        </Button>
+        />
       </header>
 
       <DealsList
@@ -107,6 +122,8 @@ export default async function DealsPage({
         initialSearch={search ?? ""}
         sortField={sortField}
         sortDirection={sortDirection}
+        companies={companies}
+        contacts={contacts}
       />
     </div>
   )
