@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
 import { AlertTriangle } from "lucide-react"
+import { format } from "date-fns"
 import { toast } from "sonner"
 
 import {
@@ -14,6 +15,7 @@ import {
 import { AddCompanyDialog } from "@/components/companies/add-company-dialog"
 import { AddContactDialog } from "@/components/contacts/add-contact-dialog"
 import { CompanyCombobox } from "@/components/shared/company-combobox"
+import { DatePicker } from "@/components/ui/date-picker"
 import {
   ContactCombobox,
   type ContactOption,
@@ -76,6 +78,21 @@ const PRIORITY_LABELS: Record<DealPriority, string> = {
 // a sentinel for the "(Keine Quelle ausgewählt)" option and translate at
 // the field boundary.
 const SOURCE_NONE_VALUE = "__none__"
+
+// HTML date strings travel as YYYY-MM-DD between the form, the Zod schema
+// (z.string()), and the DB. The DatePicker speaks Date | null. These two
+// helpers are the boundary translators — local-timezone-aware so a German
+// user picking April 15 stores "2026-04-15" (not "2026-04-14" via the UTC
+// slice trap).
+function isoDateToDate(s: string): Date | null {
+  if (!s) return null
+  const d = new Date(s)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function dateToIsoDate(d: Date | null): string {
+  return d ? format(d, "yyyy-MM-dd") : ""
+}
 
 const EMPTY_VALUES: DealFormValues = {
   title: "",
@@ -151,6 +168,17 @@ export function DealForm(props: Props) {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(
     initialValues.primary_contact_id
   )
+
+  // Bounds for the expected_close_date picker. Today (local midnight, so
+  // "today" stays selectable until 24:00 local) through five years out.
+  // Memoised once per mount — the values only matter at submit time.
+  const dateBounds = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const fiveYears = new Date(today)
+    fiveYears.setFullYear(today.getFullYear() + 5)
+    return { min: today, max: fiveYears }
+  }, [])
 
   // Inline-create state. The combobox's onCreateNew callback opens the
   // appropriate Add* dialog; on success, we append the new entity to a
@@ -341,7 +369,12 @@ export function DealForm(props: Props) {
               <FormItem>
                 <FormLabel>Expected close</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                  <DatePicker
+                    value={isoDateToDate(field.value)}
+                    onChange={(d) => field.onChange(dateToIsoDate(d))}
+                    minDate={dateBounds.min}
+                    maxDate={dateBounds.max}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

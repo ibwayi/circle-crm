@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
+import { format } from "date-fns"
 import { toast } from "sonner"
 
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/app/(app)/contacts/actions"
 import { CompanyCombobox } from "@/components/shared/company-combobox"
 import { Button } from "@/components/ui/button"
+import { DatePicker } from "@/components/ui/date-picker"
 import {
   Form,
   FormControl,
@@ -22,6 +24,20 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import type { Contact } from "@/lib/db/contacts"
+
+// Same boundary translators as deal-form: HTML date strings (YYYY-MM-DD)
+// in the form/Zod/DB world, Date | null in the DatePicker world. Local-tz
+// formatting on the way back so a German user picking April 15 stores
+// "2026-04-15", not the toISOString().slice trap value.
+function isoDateToDate(s: string): Date | null {
+  if (!s) return null
+  const d = new Date(s)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function dateToIsoDate(d: Date | null): string {
+  return d ? format(d, "yyyy-MM-dd") : ""
+}
 import {
   contactSchema,
   type ContactFormValues,
@@ -97,6 +113,15 @@ export function ContactForm(props: Props) {
     defaultValues:
       props.mode === "edit" ? contactToValues(props.contact) : EMPTY_VALUES,
   })
+
+  // Birthday bounds: 1900-01-01 (no contact older than that) through today
+  // (no birthdays in the future). Memoised so the references are stable
+  // for the DatePicker's matcher equality.
+  const birthdayBounds = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return { min: new Date(1900, 0, 1), max: today }
+  }, [])
 
   async function onSubmit(values: ContactFormValues) {
     setSubmitting(true)
@@ -285,7 +310,13 @@ export function ContactForm(props: Props) {
               <FormItem>
                 <FormLabel>Birthday</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                  <DatePicker
+                    value={isoDateToDate(field.value)}
+                    onChange={(d) => field.onChange(dateToIsoDate(d))}
+                    minDate={birthdayBounds.min}
+                    maxDate={birthdayBounds.max}
+                    placeholder="Geburtstag auswählen"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
