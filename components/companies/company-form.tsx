@@ -40,7 +40,10 @@ type Mode =
   | { mode: "edit"; company: Company }
 
 type Props = Mode & {
-  onSuccess: (companyId: string) => void
+  // Receives the full inserted/updated company so callers can update
+  // optimistic local state (e.g. inline-create from a combobox) without
+  // needing a separate fetch.
+  onSuccess: (company: { id: string; name: string }) => void
   onCancel?: () => void
 }
 
@@ -129,7 +132,7 @@ export function CompanyForm(props: Props) {
       router.refresh()
     })
 
-    props.onSuccess(result.companyId)
+    props.onSuccess({ id: result.companyId, name: input.name })
   }
 
   const busy = submitting || pending

@@ -11,6 +11,8 @@ import {
   createDealAction,
   updateDealAction,
 } from "@/app/(app)/deals/actions"
+import { AddCompanyDialog } from "@/components/companies/add-company-dialog"
+import { AddContactDialog } from "@/components/contacts/add-contact-dialog"
 import { CompanyCombobox } from "@/components/shared/company-combobox"
 import {
   ContactCombobox,
@@ -150,18 +152,28 @@ export function DealForm(props: Props) {
     initialValues.primary_contact_id
   )
 
+  // Inline-create state. The combobox's onCreateNew callback opens the
+  // appropriate Add* dialog; on success, we append the new entity to a
+  // local copy of the props and auto-select it. Local state means the
+  // newly-created row stays available for the duration of this dialog
+  // session even before router.refresh() repopulates from the server.
+  const [companies, setCompanies] = useState(props.companies)
+  const [contacts, setContacts] = useState(props.contacts)
+  const [companyDialogOpen, setCompanyDialogOpen] = useState(false)
+  const [contactDialogOpen, setContactDialogOpen] = useState(false)
+
   // Mismatch warning: if both a company AND a primary contact are picked,
   // and the contact has a company that's different from the selected one,
   // surface it inline. A contact with no company at all is fine — that
   // covers the freelancer case where there's nothing to mismatch with.
-  const selectedContact =
-    selectedContactId
-      ? props.contacts.find((c) => c.id === selectedContactId) ?? null
-      : null
-  const selectedCompany =
-    selectedCompanyId
-      ? props.companies.find((c) => c.id === selectedCompanyId) ?? null
-      : null
+  // Resolved against the local lists (which include any inline-created
+  // rows) rather than props.
+  const selectedContact = selectedContactId
+    ? contacts.find((c) => c.id === selectedContactId) ?? null
+    : null
+  const selectedCompany = selectedCompanyId
+    ? companies.find((c) => c.id === selectedCompanyId) ?? null
+    : null
   const showMismatchWarning =
     !!selectedCompany &&
     !!selectedContact &&
@@ -386,7 +398,8 @@ export function DealForm(props: Props) {
                     field.onChange(v)
                     setSelectedCompanyId(v)
                   }}
-                  companies={props.companies}
+                  companies={companies}
+                  onCreateNew={() => setCompanyDialogOpen(true)}
                 />
               </FormControl>
               <FormMessage />
@@ -408,10 +421,11 @@ export function DealForm(props: Props) {
                       field.onChange(v)
                       setSelectedContactId(v)
                     }}
-                    contacts={props.contacts}
+                    contacts={contacts}
                     scopeCompanyId={selectedCompanyId}
                     placeholder="Select primary contact…"
                     noneLabel="(No primary contact)"
+                    onCreateNew={() => setContactDialogOpen(true)}
                   />
                 </FormControl>
                 {showMismatchWarning && selectedContact && selectedCompany && (
@@ -465,6 +479,31 @@ export function DealForm(props: Props) {
           </Button>
         </div>
       </form>
+
+      {/* Inline-create dialogs. Stacked on top of the parent dialog when
+          opened from a combobox's "+ Anlegen" item. On success, append the
+          new entity to local state and auto-select it via the form field. */}
+      <AddCompanyDialog
+        open={companyDialogOpen}
+        onOpenChange={setCompanyDialogOpen}
+        onCreated={(company) => {
+          setCompanies((prev) => [...prev, company])
+          form.setValue("company_id", company.id)
+          setSelectedCompanyId(company.id)
+        }}
+      />
+      <AddContactDialog
+        open={contactDialogOpen}
+        onOpenChange={setContactDialogOpen}
+        companies={companies}
+        onCreated={(contact) => {
+          setContacts((prev) => [...prev, contact])
+          if (props.mode === "create") {
+            form.setValue("primary_contact_id", contact.id)
+            setSelectedContactId(contact.id)
+          }
+        }}
+      />
     </Form>
   )
 }

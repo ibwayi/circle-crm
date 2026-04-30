@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronsUpDown, Plus } from "lucide-react"
 
 import {
   Command,
@@ -30,6 +30,7 @@ export type ContactOption = {
 }
 
 const NONE_VALUE = "__none__"
+const CREATE_VALUE = "__create__"
 
 function fullName(c: ContactOption): string {
   return [c.first_name, c.last_name].filter(Boolean).join(" ")
@@ -52,6 +53,7 @@ export function ContactCombobox({
   // When set, the combobox initially shows only contacts at this company.
   // The user can still clear the filter with the toggle to see everyone.
   scopeCompanyId,
+  onCreateNew,
 }: {
   value: string | null
   onChange: (next: string | null) => void
@@ -60,6 +62,9 @@ export function ContactCombobox({
   placeholder?: string
   noneLabel?: string
   scopeCompanyId?: string | null
+  // When provided, a "+ Neuen Kontakt anlegen" item appears at the bottom
+  // of the dropdown. Selection closes the popover and invokes the callback.
+  onCreateNew?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [scoped, setScoped] = useState(true)
@@ -166,6 +171,24 @@ export function ContactCombobox({
                   </CommandItem>
                 )
               })}
+              {onCreateNew && (
+                <CommandItem
+                  value={CREATE_VALUE}
+                  onSelect={() => {
+                    setOpen(false)
+                    onCreateNew()
+                  }}
+                  className="border-t border-border mt-1 pt-2"
+                >
+                  <Plus
+                    className="mr-2 h-4 w-4 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <span className="text-foreground">
+                    Neuen Kontakt anlegen
+                  </span>
+                </CommandItem>
+              )}
             </CommandGroup>
           </CommandList>
         </Command>

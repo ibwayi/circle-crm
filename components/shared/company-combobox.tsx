@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronsUpDown, Plus } from "lucide-react"
 
 import {
   Command,
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 type CompanyOption = { id: string; name: string }
 
 const NONE_VALUE = "__none__"
+const CREATE_VALUE = "__create__"
 
 export function CompanyCombobox({
   value,
@@ -29,6 +30,7 @@ export function CompanyCombobox({
   disabled,
   placeholder = "Select company…",
   noneLabel = "(No company)",
+  onCreateNew,
 }: {
   value: string | null
   onChange: (next: string | null) => void
@@ -36,6 +38,10 @@ export function CompanyCombobox({
   disabled?: boolean
   placeholder?: string
   noneLabel?: string
+  // When provided, a "+ Neue Firma anlegen" item appears at the bottom of
+  // the dropdown. Selection closes the popover and invokes the callback
+  // — the parent handles the actual creation flow.
+  onCreateNew?: () => void
 }) {
   const [open, setOpen] = useState(false)
 
@@ -104,6 +110,24 @@ export function CompanyCombobox({
                   {company.name}
                 </CommandItem>
               ))}
+              {onCreateNew && (
+                <CommandItem
+                  value={CREATE_VALUE}
+                  onSelect={() => {
+                    setOpen(false)
+                    onCreateNew()
+                  }}
+                  className="border-t border-border mt-1 pt-2"
+                >
+                  <Plus
+                    className="mr-2 h-4 w-4 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <span className="text-foreground">
+                    Neue Firma anlegen
+                  </span>
+                </CommandItem>
+              )}
             </CommandGroup>
           </CommandList>
         </Command>

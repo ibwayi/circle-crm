@@ -12,9 +12,13 @@ import { CompanyForm } from "@/components/companies/company-form"
 export function AddCompanyDialog({
   open,
   onOpenChange,
+  onCreated,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  // Inline-create flow: invoked with the new company so the parent can
+  // append it to a local list and auto-select it in a combobox.
+  onCreated?: (company: { id: string; name: string }) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -28,7 +32,10 @@ export function AddCompanyDialog({
         </DialogHeader>
         <CompanyForm
           mode="create"
-          onSuccess={() => onOpenChange(false)}
+          onSuccess={(company) => {
+            onCreated?.(company)
+            onOpenChange(false)
+          }}
           onCancel={() => onOpenChange(false)}
         />
       </DialogContent>

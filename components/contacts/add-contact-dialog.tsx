@@ -7,16 +7,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ContactForm } from "@/components/contacts/contact-form"
+import {
+  ContactForm,
+  type ContactSuccessPayload,
+} from "@/components/contacts/contact-form"
 
 export function AddContactDialog({
   open,
   onOpenChange,
   companies,
+  onCreated,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   companies: { id: string; name: string }[]
+  // Inline-create flow: invoked with the full contact payload so the parent
+  // can append it to a local list and auto-select it in a combobox.
+  onCreated?: (contact: ContactSuccessPayload) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -30,7 +37,10 @@ export function AddContactDialog({
         <ContactForm
           mode="create"
           companies={companies}
-          onSuccess={() => onOpenChange(false)}
+          onSuccess={(contact) => {
+            onCreated?.(contact)
+            onOpenChange(false)
+          }}
           onCancel={() => onOpenChange(false)}
         />
       </DialogContent>

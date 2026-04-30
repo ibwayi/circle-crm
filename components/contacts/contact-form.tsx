@@ -31,9 +31,22 @@ type Mode =
   | { mode: "create" }
   | { mode: "edit"; contact: Contact }
 
+// Shape returned to onSuccess — matches ContactOption (the combobox prop
+// type) so inline-create flows can append + auto-select without an extra
+// fetch round-trip.
+export type ContactSuccessPayload = {
+  id: string
+  first_name: string
+  last_name: string | null
+  email: string | null
+  position: string | null
+  company_id: string | null
+  company_name: string | null
+}
+
 type Props = Mode & {
   companies: { id: string; name: string }[]
-  onSuccess: (contactId: string) => void
+  onSuccess: (contact: ContactSuccessPayload) => void
   onCancel?: () => void
 }
 
@@ -114,7 +127,19 @@ export function ContactForm(props: Props) {
       router.refresh()
     })
 
-    props.onSuccess(result.contactId)
+    const company_name =
+      values.company_id
+        ? props.companies.find((c) => c.id === values.company_id)?.name ?? null
+        : null
+    props.onSuccess({
+      id: result.contactId,
+      first_name: input.first_name,
+      last_name: input.last_name,
+      email: input.email,
+      position: input.position,
+      company_id: input.company_id,
+      company_name,
+    })
   }
 
   const busy = submitting || pending

@@ -9,6 +9,7 @@ import { listCompanies } from "@/lib/db/companies"
 import { listContacts } from "@/lib/db/contacts"
 import { listDeals, type DealStage } from "@/lib/db/deals"
 import { createClient } from "@/lib/supabase/server"
+import { DEAL_SOURCES } from "@/lib/validations/deal"
 
 const VALID_STAGES: readonly DealStage[] = [
   "lead",
@@ -46,12 +47,26 @@ function parseSortDir(raw: string | undefined): SortDirection {
     : "asc"
 }
 
+function parseSource(raw: string | undefined): string | undefined {
+  if (!raw) return undefined
+  return (DEAL_SOURCES as readonly string[]).includes(raw) ? raw : undefined
+}
+
+// Mirror /contacts: undefined = no filter, "" stays undefined, anything
+// else is treated as a UUID. We don't surface "no company" as a separate
+// state on /deals (would be redundant given the company-id selection UI).
+function parseCompanyId(raw: string | undefined): string | null {
+  return raw && raw.length > 0 ? raw : null
+}
+
 export default async function DealsPage({
   searchParams,
 }: {
   searchParams: Promise<{
     stage?: string
     search?: string
+    source?: string
+    company?: string
     sort?: string
     dir?: string
   }>
@@ -59,6 +74,8 @@ export default async function DealsPage({
   const params = await searchParams
   const stage = parseStage(params.stage)
   const search = params.search?.trim() || undefined
+  const source = parseSource(params.source)
+  const companyId = parseCompanyId(params.company)
   const sortField = parseSortField(params.sort)
   const sortDirection = parseSortDir(params.dir)
 
@@ -67,7 +84,12 @@ export default async function DealsPage({
   // The Add Deal dialog needs companies + contacts for its comboboxes.
   // Fetch alongside the main list so the page renders in one round-trip.
   const [filtered, companiesFull, contactsFull] = await Promise.all([
-    listDeals(supabase, { stage, search }),
+    listDeals(supabase, {
+      stage,
+      search,
+      source,
+      companyId: companyId ?? undefined,
+    }),
     listCompanies(supabase),
     listContacts(supabase),
   ])
@@ -76,7 +98,10 @@ export default async function DealsPage({
   // the full pipeline regardless of the active filter. When no filters are
   // active the unfiltered list IS the filtered list — skip the duplicate
   // round-trip.
-  const all = stage || search ? await listDeals(supabase) : filtered
+  const all =
+    stage || search || source || companyId
+      ? await listDeals(supabase)
+      : filtered
 
   const counts: DealCounts = {
     all: all.length,
@@ -108,11 +133,7 @@ export default async function DealsPage({
             Deals across all stages.
           </p>
         </div>
-        <AddDealButton
-          companies={companies}
-          contacts={contacts}
-          variant="outline"
-        />
+        <AddDealButton companies={companies} contacts={contacts} />
       </header>
 
       <DealsList
@@ -120,6 +141,8 @@ export default async function DealsPage({
         counts={counts}
         initialStage={stage ?? "all"}
         initialSearch={search ?? ""}
+        initialSource={source}
+        initialCompanyId={companyId}
         sortField={sortField}
         sortDirection={sortDirection}
         companies={companies}

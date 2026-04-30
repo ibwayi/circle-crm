@@ -18,12 +18,21 @@ import {
   type DealSortField,
   type SortDirection,
 } from "@/components/deals/deal-table"
+import { CompanyCombobox } from "@/components/shared/company-combobox"
 import type { ContactOption } from "@/components/shared/contact-combobox"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import type { DealStage, DealWithRelations } from "@/lib/db/deals"
+import { DEAL_SOURCES } from "@/lib/validations/deal"
 
 type TabValue = "all" | DealStage
 type View = "table" | "groups" | "kanban"
@@ -111,11 +120,17 @@ function useDebouncedCallback<Args extends unknown[]>(
   )
 }
 
+// Sentinel for the "Alle Quellen / Alle Firmen" default in the filter
+// dropdowns. Base UI's Select disallows an empty string item value.
+const FILTER_ALL = "__all__"
+
 export function DealsList({
   deals,
   counts,
   initialStage,
   initialSearch,
+  initialSource,
+  initialCompanyId,
   sortField,
   sortDirection,
   companies,
@@ -125,6 +140,8 @@ export function DealsList({
   counts: DealCounts
   initialStage: TabValue
   initialSearch: string
+  initialSource: string | undefined
+  initialCompanyId: string | null
   sortField: DealSortField
   sortDirection: SortDirection
   companies: { id: string; name: string }[]
@@ -151,6 +168,8 @@ export function DealsList({
     (next: {
       stage?: TabValue
       search?: string
+      source?: string | null // null means "drop the filter"
+      companyId?: string | null // null means "drop the filter"
       sort?: DealSortField
       dir?: SortDirection
     }) => {
@@ -169,6 +188,22 @@ export function DealsList({
           params.set("search", next.search)
         } else {
           params.delete("search")
+        }
+      }
+
+      if (next.source !== undefined) {
+        if (next.source === null) {
+          params.delete("source")
+        } else {
+          params.set("source", next.source)
+        }
+      }
+
+      if (next.companyId !== undefined) {
+        if (next.companyId === null) {
+          params.delete("company")
+        } else {
+          params.set("company", next.companyId)
         }
       }
 
@@ -216,9 +251,23 @@ export function DealsList({
     const params = new URLSearchParams(searchParams.toString())
     params.delete("stage")
     params.delete("search")
+    params.delete("source")
+    params.delete("company")
     const qs = params.toString()
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     setSearchInput("")
+  }
+
+  function handleSourceChange(next: string | null) {
+    if (next === null || next === FILTER_ALL) {
+      updateUrl({ source: null })
+    } else {
+      updateUrl({ source: next })
+    }
+  }
+
+  function handleCompanyChange(next: string | null) {
+    updateUrl({ companyId: next })
   }
 
   // Stage tabs make sense in Table view (narrow the rows). In Groups and
@@ -289,6 +338,43 @@ export function DealsList({
         </div>
       </div>
 
+      {/* Filter row: source + company. Wraps below the toolbar on
+          narrow viewports. Both filters preserve the URL state pattern
+          and survive view switches. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Select
+          value={initialSource ?? FILTER_ALL}
+          onValueChange={handleSourceChange}
+        >
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectValue placeholder="Alle Quellen">
+              {(v: string | null) => {
+                if (v === null || v === FILTER_ALL) return "Alle Quellen"
+                return v
+              }}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={FILTER_ALL}>Alle Quellen</SelectItem>
+            {DEAL_SOURCES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="w-full sm:w-[260px]">
+          <CompanyCombobox
+            value={initialCompanyId}
+            onChange={handleCompanyChange}
+            companies={companies}
+            placeholder="Alle Firmen"
+            noneLabel="Alle Firmen"
+          />
+        </div>
+      </div>
+
       {deals.length === 0 ? (
         <DealsEmpty
           searched={initialSearch.length > 0 || initialStage !== "all"}
@@ -352,11 +438,7 @@ function DealsEmpty({
             Clear filters
           </Button>
         ) : (
-          <AddDealButton
-            companies={companies}
-            contacts={contacts}
-            variant="outline"
-          />
+          <AddDealButton companies={companies} contacts={contacts} />
         )}
       </div>
     </div>

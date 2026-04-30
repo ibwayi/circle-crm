@@ -84,6 +84,9 @@ export async function listDeals(
     search?: string
     companyId?: string | null
     contactId?: string
+    // Free-text equality filter on the source column. The form constrains
+    // values to DEAL_SOURCES so the filter only sees that vocabulary.
+    source?: string
   }
 ): Promise<DealWithRelations[]> {
   // Contact filter goes through the deal_contacts junction. Supabase JS
@@ -124,6 +127,10 @@ export async function listDeals(
     query = query.is("company_id", null)
   } else if (typeof opts?.companyId === "string") {
     query = query.eq("company_id", opts.companyId)
+  }
+
+  if (opts?.source && opts.source.trim().length > 0) {
+    query = query.eq("source", opts.source)
   }
 
   if (opts?.search && opts.search.trim().length > 0) {
