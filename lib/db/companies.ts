@@ -17,6 +17,13 @@ export type CompanyWithRelations = {
   deals: Deal[]
 }
 
+// List-view shape: a Company row plus the two counts the table renders
+// (linked contacts and active deals). Active = stage NOT IN ('won','lost').
+export type CompanyWithCounts = Company & {
+  contact_count: number
+  active_deal_count: number
+}
+
 export async function listCompanies(
   client: Client,
   opts?: { search?: string }
@@ -37,6 +44,62 @@ export async function listCompanies(
   return [...data].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
   )
+}
+
+export async function listCompaniesWithCounts(
+  client: Client,
+  opts?: { search?: string }
+): Promise<CompanyWithCounts[]> {
+  // Two-step: first fetch companies (and apply search/sort), then batch-
+  // fetch contact + deal rows scoped to those company ids and tally them
+  // in JS. This is two extra round-trips over plain listCompanies, but
+  // it avoids N+1 — and at portfolio scale (≤ a couple hundred companies
+  // per user) it's cheaper than equivalent count() subqueries.
+  const companies = await listCompanies(client, opts)
+  if (companies.length === 0) return []
+
+  const companyIds = companies.map((c) => c.id)
+
+  const [contactsRes, dealsRes] = await Promise.all([
+    client.from("contacts").select("company_id").in("company_id", companyIds),
+    client
+      .from("deals")
+      .select("company_id, stage")
+      .in("company_id", companyIds),
+  ])
+
+  if (contactsRes.error) throw contactsRes.error
+  if (dealsRes.error) throw dealsRes.error
+
+  const contactCounts = new Map<string, number>()
+  for (const row of contactsRes.data ?? []) {
+    if (row.company_id) {
+      contactCounts.set(
+        row.company_id,
+        (contactCounts.get(row.company_id) ?? 0) + 1
+      )
+    }
+  }
+
+  const activeDealCounts = new Map<string, number>()
+  for (const row of dealsRes.data ?? []) {
+    if (
+      row.company_id &&
+      row.stage !== "won" &&
+      row.stage !== "lost"
+    ) {
+      activeDealCounts.set(
+        row.company_id,
+        (activeDealCounts.get(row.company_id) ?? 0) + 1
+      )
+    }
+  }
+
+  return companies.map((c) => ({
+    ...c,
+    contact_count: contactCounts.get(c.id) ?? 0,
+    active_deal_count: activeDealCounts.get(c.id) ?? 0,
+  }))
 }
 
 export async function getCompany(
