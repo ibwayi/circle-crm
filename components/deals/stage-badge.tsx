@@ -9,10 +9,9 @@ export type DealStage =
   | "won"
   | "lost"
 
-// Single source of truth for stage presentation, mirrored from STATUS_CONFIG
-// in components/customers/status-badge.tsx. Reused by Phase 20's kanban
-// columns + filter tabs + deals table — same shape so labels and colors
-// stay aligned across views.
+// Single source of truth for stage presentation. Reused by the deals
+// kanban columns, filter tabs, and table — same shape so labels and
+// colors stay aligned across views.
 //
 // Color mapping per CONCEPT.md:
 //   * lead        → existing --status-lead       (blue)

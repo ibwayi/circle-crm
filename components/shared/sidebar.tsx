@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users } from "lucide-react"
+import { Building2, LayoutDashboard, Users, Workflow } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { UserMenu } from "@/components/shared/user-menu"
 import { cn } from "@/lib/utils"
@@ -15,7 +15,9 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/customers", label: "Customers", icon: Users },
+  { href: "/deals", label: "Pipeline", icon: Workflow },
+  { href: "/companies", label: "Companies", icon: Building2 },
+  { href: "/contacts", label: "Contacts", icon: Users },
 ]
 
 function isActive(pathname: string, href: string): boolean {

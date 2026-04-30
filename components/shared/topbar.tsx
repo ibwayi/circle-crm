@@ -8,12 +8,15 @@ import { SidebarContent } from "@/components/shared/sidebar"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { UserMenu } from "@/components/shared/user-menu"
 
-// Hardcoded titles for now — once the customer detail page exists we'll
-// match `/customers/[id]` and resolve the customer name dynamically.
+// Hardcoded titles. Detail pages render their own h2 inside the page body,
+// so the topbar just shows the section name — no per-record fetch needed.
 function getPageTitle(pathname: string): string {
   if (pathname === "/dashboard") return "Dashboard"
-  if (pathname === "/customers") return "Customers"
-  if (pathname.startsWith("/customers/")) return "Customer Details"
+  if (pathname === "/deals" || pathname.startsWith("/deals/")) return "Pipeline"
+  if (pathname === "/companies") return "Companies"
+  if (pathname.startsWith("/companies/")) return "Company"
+  if (pathname === "/contacts") return "Contacts"
+  if (pathname.startsWith("/contacts/")) return "Contact"
   return ""
 }
 
