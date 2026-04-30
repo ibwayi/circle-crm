@@ -251,3 +251,85 @@ With Phase 16 deployed and verified live (sidebar switched, `/customers` redirec
 - Pre-drop CSV backups of `customers` and `notes` (rows where `customer_id IS NOT NULL`) were taken on 2026-04-30 (locally, not committed). They're the only recovery path for any row that didn't make it through the 0008 mapping.
 - `lib/seed/demo-data.ts` is now a no-op stub — Phase 22 will rewrite it as a real 2.0 entity seed (companies + contacts + deals + polymorphic notes). Until then, the demo user's data is what 0008 left in place; the nightly cron runs without writes.
 - The route table still includes `/customers` and `/customers/[id]`, but only as 307 redirects to `/deals`. Old bookmarks land somewhere useful instead of 404'ing. These stubs can be removed in any future release if needed; their cost is two two-line files.
+
+---
+
+## ADR-010: Polymorphic notes via three nullable FKs + CHECK constraint
+**Date:** 2026-04-30
+**Status:** Accepted
+
+### Context
+Release 2.0 needed notes that could attach to any one of three parent entity types — Company, Contact, or Deal. The Phase 7 design had a single `notes.customer_id` column; the new world has multiple parent types and the relationship needs to be cleanly modelled at the schema layer (so RLS, ON DELETE CASCADE, and TypeScript types all stay coherent).
+
+### Decision
+A single `notes` table with three nullable FK columns — `company_id`, `contact_id`, `deal_id` — plus a `CHECK` constraint enforcing exactly one is set. A polymorphic `notes_check_ownership()` trigger looks up the parent's `user_id` based on whichever FK is set and verifies it matches `notes.user_id`. Migrated in two steps: 0007 (add four-FK CHECK while customer_id still existed) → 0009 (drop customer_id, simplify CHECK + trigger to three branches).
+
+### Rationale
+- **Cascade behaviour stays cheap and standard.** Each FK has its own `ON DELETE CASCADE` clause; deleting a parent automatically deletes its notes via Postgres's normal FK machinery — no application code needed.
+- **RLS policies are uniform.** A single `notes` row carries `user_id`; the standard `WHERE user_id = auth.uid()` policy works identically regardless of which parent type is set.
+- **Types follow the column shape.** Generated Supabase types have `notes.company_id: string | null`, `contact_id: string | null`, `deal_id: string | null` — application code uses a discriminated union (`CreateNoteInput`) that the helpers translate at the FK column boundary.
+
+### Alternatives considered
+- **One notes table per parent type** (`notes_company`, `notes_contact`, `notes_deal`). Rejected — would have triplicated the query helpers (`listNotesForCompany` etc still exist, but they hit the same table), the RLS policy, the CASCADE rules, and the Phase 19 shared-component wiring. Three tables of identical shape with slightly different FK columns is duplication, not polymorphism.
+- **Single `parent_id` + `parent_type` with no FK enforcement.** Rejected — loses cascade behaviour (would need an application-level cleanup pass on parent deletes), can't be enforced at the schema layer, and offers no compile-time guarantee that the right parent type is referenced. The CHECK-constraint pattern gets all of those for free.
+- **A separate `note_attachments` junction table.** Rejected — adds another join for every read, and the M:0..1 cardinality (a note has exactly one parent) doesn't justify a junction.
+
+### Consequences
+- Queries must filter on the right column (`listNotesForDeal` uses `eq("deal_id", id)`, etc) — three sibling helpers in `lib/db/notes.ts` rather than a single parameterised one. The shared NotesSection component and server action handle the discrimination via a `NotesTarget` discriminated union.
+- The four-column-then-three-column transition required two migrations (0007 add, 0009 simplify). Worth it: Phase 16's deploy was fully reversible up until 0009 ran.
+- Adding a fourth parent type (e.g., a future `Project` entity) is a column-add migration plus an arm on the union — no schema rework.
+
+---
+
+## ADR-011: M:N deal contacts with `is_primary` flag (vs. `primary_contact_id` column)
+**Date:** 2026-04-30
+**Status:** Accepted
+
+### Context
+A deal involves one or more contacts; one of them might be the "primary" point-of-contact (shown by default on the deal card and detail page). The data model needed to express both pieces — multi-contact membership AND the singled-out primary — without internal contradictions.
+
+### Decision
+A `deal_contacts` junction table with composite primary key `(deal_id, contact_id)` and an `is_primary boolean` column. A **partial unique index** on `(deal_id) WHERE is_primary = true` enforces at-most-one-primary-per-deal at the schema layer. The cross-table `deal_contacts_check_ownership()` trigger ensures the junction's `user_id` matches both the deal's and the contact's.
+
+### Rationale
+- **One source of truth.** Every deal-contact link lives in `deal_contacts`. Whether a contact is primary or secondary is a property of the link, not a separate column on `deals`.
+- **Postgres enforces "at most one primary."** The partial unique index does what an application-level loop would otherwise have to: rejects a second row that tries to set `is_primary = true` for a deal that already has one. Promotion is a demote-then-promote sequence — `linkContactToDeal` and `setDealPrimaryContact` both encapsulate it.
+- **Reads stay one query.** `getDeal` returns `Contact[] & { is_primary: boolean }` — UI sorts primary-first, no extra round-trip.
+
+### Alternatives considered
+- **`primary_contact_id` column on `deals` + a `deal_contacts` junction for non-primary.** Rejected — duplicates the linkage in two places; changing primary requires writes to both tables; you can write a row that contradicts itself (junction says X is on the deal, deals.primary_contact_id points to Y who isn't in the junction).
+- **Array of contact UUIDs on `deals` with the first being primary.** Rejected — Postgres arrays have weak FK enforcement (no cascade behaviour), positional semantics ("first = primary") is brittle, and array indexing doesn't compose with the junction's RLS / ownership trigger pattern used by every other relationship in the schema.
+- **Separate `deal_primary_contact` view + `deal_contacts` table.** Rejected — adds a derived object to sync, and the partial-unique-index pattern is the canonical Postgres solution to "at most one X."
+
+### Consequences
+- `setDealPrimaryContact` and `linkContactToDeal` (when `isPrimary: true`) must demote-then-promote in two ordered statements. Encapsulated in `lib/db/deals.ts` so callers don't have to know the dance.
+- The deal detail page sorts contacts by `is_primary DESC` then by name; the kanban card surfaces only the primary via a flat `primary_contact` post-process from the nested select.
+- A deal can briefly have no primary (e.g., after the only contact is removed). Acceptable per UX — the detail page renders a "no primary" hint until the user promotes another. Adding a NOT NULL invariant would force more state-machine logic on every junction edit.
+
+---
+
+## ADR-012: Optional company on contacts and deals (vs. required)
+**Date:** 2026-04-30
+**Status:** Accepted
+
+### Context
+B2B sales reality: not every contact belongs to a company, and not every deal has a company at the moment it's created. Freelancers, independent consultants, individual prospects, and "we just met at a conference" leads all need a place in the data model before the user has any company info — or sometimes ever.
+
+### Decision
+`contacts.company_id` and `deals.company_id` are nullable. The UI treats `null` as a first-class "(No company)" state — visible as a filter option on `/contacts`, supported by the deal form's combobox, and rendered with an em-dash on table rows.
+
+### Rationale
+- **Matches the user's mental model.** "Anna Schäfer, freelance UX designer" exists in the user's CRM. The contact's identity isn't a company; it's a person.
+- **Deals can predate company info.** A user might log a lead from a LinkedIn message before they know which company the prospect runs. NOT NULL would force premature placeholder data.
+- **Cascade behaviour stays correct.** `ON DELETE SET NULL` on the company_id FKs lets deleting a company keep its contacts and deals — they survive without the link, exactly the right behaviour for "company went away, the person is still in our world."
+
+### Alternatives considered
+- **Synthetic "Unaffiliated" pseudo-company.** Rejected — clutters the companies list with placeholder entries, and freelancers aren't "unaffiliated with their company"; they don't have one. Forces every list query to filter that one row out.
+- **Two separate tables: `people` (no company) and `company_contacts` (company required).** Rejected — duplicates schema, splits the contacts UI in two, and forces application code to discriminate between two ID spaces. The freelancer/employee distinction is a property of the row, not the type.
+- **Required company + a "self-employed" flag.** Rejected — same problem as the pseudo-company option, just with extra boolean.
+
+### Consequences
+- Every `listContacts` / `listDeals` query handles NULL company_id explicitly — three-state filter (`undefined` = all, `null` = no company, `string` = that company).
+- The contacts UI surfaces "(No company)" as a filter chip; the deal form's contact combobox optionally scopes to the deal's company while letting the user widen to "all contacts" via a toggle.
+- The cross-table ownership trigger on `deal_contacts` still works because it walks through deal → user_id and contact → user_id, neither of which depends on a company. Companies are orthogonal to the ownership check.
+- A future tightening (require company on Enterprise plan, optional on Starter) is feature-flag work, not a schema change.
