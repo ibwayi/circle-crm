@@ -12,7 +12,7 @@ import { CustomerDetailActions } from "@/components/customers/customer-detail-ac
 import { NotesSection } from "@/components/customers/notes-section"
 import { Card, CardContent } from "@/components/ui/card"
 import { getCustomer } from "@/lib/db/customers"
-import { listNotes } from "@/lib/db/notes"
+import { listNotesForCustomer } from "@/lib/db/notes"
 import { createClient } from "@/lib/supabase/server"
 
 const eurFormatter = new Intl.NumberFormat("de-DE", {
@@ -43,7 +43,7 @@ export default async function CustomerDetailPage({
     notFound()
   }
 
-  const notes = await listNotes(supabase, customer.id)
+  const notes = await listNotesForCustomer(supabase, customer.id)
 
   return (
     <div className="space-y-6 p-6 md:p-8">

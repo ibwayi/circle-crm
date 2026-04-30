@@ -87,8 +87,8 @@ export async function addNoteAction(
 
   try {
     const note = await createNote(supabase, {
-      customer_id: customerId,
-      user_id: user.id,
+      customerId,
+      userId: user.id,
       content: trimmed,
     })
     revalidatePath(`/customers/${customerId}`)

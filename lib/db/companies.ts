@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
+import { escapeIlike } from "@/lib/db/_utils"
 
 type Client = SupabaseClient<Database>
 
@@ -14,11 +15,6 @@ export type CompanyWithRelations = {
   company: Company
   contacts: Contact[]
   deals: Deal[]
-}
-
-// Escape ilike wildcards so user input can't broaden the search.
-function escapeIlike(input: string): string {
-  return input.replace(/[\\%_]/g, (m) => `\\${m}`)
 }
 
 export async function listCompanies(

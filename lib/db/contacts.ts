@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
+import { escapeIlike } from "@/lib/db/_utils"
 
 type Client = SupabaseClient<Database>
 
@@ -25,11 +26,6 @@ export type ContactWithRelations = {
   contact: Contact
   company: Company | null
   deals: DealWithPrimaryFlag[]
-}
-
-// Escape ilike wildcards so user input can't broaden the search.
-function escapeIlike(input: string): string {
-  return input.replace(/[\\%_]/g, (m) => `\\${m}`)
 }
 
 // Stable, case-insensitive contact ordering: NULLS FIRST on last_name
