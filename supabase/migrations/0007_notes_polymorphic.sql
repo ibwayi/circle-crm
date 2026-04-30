@@ -2,6 +2,16 @@
 -- Purpose:   Extend `notes` so each row can attach to a company, contact,
 --            or deal — in addition to the legacy customer link.
 --
+-- Post-apply note (2026-04-30, after 0008 failed):
+--   This migration missed making `notes.customer_id` nullable. The CHECK
+--   constraint added below allows customer_id to be NULL when one of the
+--   other three FKs is set, but the original 0001 schema declared
+--   customer_id NOT NULL. Both constraints together blocked 0008's
+--   re-parenting UPDATE (`SET customer_id = NULL, deal_id = ...`) with a
+--   NOT NULL violation. Fixed in 0007a_notes_nullable_customer_id.sql —
+--   kept as a separate file so applied migrations stay immutable in the
+--   audit trail.
+--
 -- Strategy:
 --   * Add three nullable FKs (company_id, contact_id, deal_id) alongside
 --     the existing customer_id. customer_id stays through the transition
