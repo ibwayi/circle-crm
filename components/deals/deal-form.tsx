@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
+import { AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -36,6 +37,7 @@ import {
 import type { Deal, DealStage } from "@/lib/db/deals"
 import {
   DEAL_PRIORITIES,
+  DEAL_SOURCES,
   DEAL_STAGES,
   dealSchema,
   type DealFormValues,
@@ -67,6 +69,11 @@ const PRIORITY_LABELS: Record<DealPriority, string> = {
   medium: "Medium",
   high: "High",
 }
+
+// Base UI's Select disallows an empty string as an item value, so we use
+// a sentinel for the "(Keine Quelle ausgewählt)" option and translate at
+// the field boundary.
+const SOURCE_NONE_VALUE = "__none__"
 
 const EMPTY_VALUES: DealFormValues = {
   title: "",
@@ -131,12 +138,35 @@ export function DealForm(props: Props) {
     defaultValues: initialValues,
   })
 
-  // Track company_id locally instead of via form.watch() — the watcher trips
-  // react-hooks/incompatible-library because the returned function can't be
-  // memoised. Same pattern as note-form.tsx's contentLength state.
+  // Track company_id + primary_contact_id locally instead of via form.watch()
+  // — the watcher trips react-hooks/incompatible-library because the
+  // returned function can't be memoised. Same pattern as note-form.tsx's
+  // contentLength state. Both pieces of state drive the company/contact
+  // mismatch warning below.
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
     initialValues.company_id
   )
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(
+    initialValues.primary_contact_id
+  )
+
+  // Mismatch warning: if both a company AND a primary contact are picked,
+  // and the contact has a company that's different from the selected one,
+  // surface it inline. A contact with no company at all is fine — that
+  // covers the freelancer case where there's nothing to mismatch with.
+  const selectedContact =
+    selectedContactId
+      ? props.contacts.find((c) => c.id === selectedContactId) ?? null
+      : null
+  const selectedCompany =
+    selectedCompanyId
+      ? props.companies.find((c) => c.id === selectedCompanyId) ?? null
+      : null
+  const showMismatchWarning =
+    !!selectedCompany &&
+    !!selectedContact &&
+    !!selectedContact.company_id &&
+    selectedContact.company_id !== selectedCompany.id
 
   async function onSubmit(values: DealFormValues) {
     setSubmitting(true)
@@ -153,11 +183,14 @@ export function DealForm(props: Props) {
     }
 
     if (props.mode === "create") {
-      // Land directly on the new deal so the user can manage contacts /
-      // notes — same UX as Phase 17's company create.
-      toast.success("Deal added")
+      // Stay in the pipeline view so the user keeps their place. The
+      // dialog closes via onSuccess; revalidation surfaces the new deal
+      // in the list/kanban they were already looking at.
+      toast.success(`Deal erstellt: ${input.title}`)
+      startTransition(() => {
+        router.refresh()
+      })
       props.onSuccess(result.dealId)
-      router.push(`/deals/${result.dealId}`)
       return
     }
 
@@ -308,13 +341,32 @@ export function DealForm(props: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Source</FormLabel>
-                <FormControl>
-                  <Input
-                    autoComplete="off"
-                    placeholder="Referral, LinkedIn, Inbound…"
-                    {...field}
-                  />
-                </FormControl>
+                <Select
+                  // Empty string = "(Keine Quelle ausgewählt)" → submits as
+                  // null. Base UI's Select doesn't let an item have an
+                  // empty value, so we map between "" and the sentinel
+                  // here at the field boundary.
+                  value={field.value === "" ? SOURCE_NONE_VALUE : field.value}
+                  onValueChange={(v) =>
+                    field.onChange(v === SOURCE_NONE_VALUE ? "" : v)
+                  }
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="(Keine Quelle ausgewählt)" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={SOURCE_NONE_VALUE}>
+                      (Keine Quelle ausgewählt)
+                    </SelectItem>
+                    {DEAL_SOURCES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -352,13 +404,36 @@ export function DealForm(props: Props) {
                 <FormControl>
                   <ContactCombobox
                     value={field.value}
-                    onChange={field.onChange}
+                    onChange={(v) => {
+                      field.onChange(v)
+                      setSelectedContactId(v)
+                    }}
                     contacts={props.contacts}
                     scopeCompanyId={selectedCompanyId}
                     placeholder="Select primary contact…"
                     noneLabel="(No primary contact)"
                   />
                 </FormControl>
+                {showMismatchWarning && selectedContact && selectedCompany && (
+                  <div className="flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-xs text-amber-700 dark:text-amber-400">
+                    <AlertTriangle
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span>
+                      <strong>
+                        {[selectedContact.first_name, selectedContact.last_name]
+                          .filter(Boolean)
+                          .join(" ")}
+                      </strong>{" "}
+                      gehört zu{" "}
+                      <strong>
+                        {selectedContact.company_name ?? "einer anderen Firma"}
+                      </strong>
+                      , nicht zu <strong>{selectedCompany.name}</strong>.
+                    </span>
+                  </div>
+                )}
                 <FormDescription>
                   Optional. You can add more contacts after creating the deal.
                 </FormDescription>

@@ -13,6 +13,20 @@ export type DealStageValue = (typeof DEAL_STAGES)[number]
 export const DEAL_PRIORITIES = ["low", "medium", "high"] as const
 export type DealPriority = (typeof DEAL_PRIORITIES)[number]
 
+// Free-text in the DB (no CHECK constraint), but the form constrains the
+// surface to a fixed German-language set so the dropdown can re-display
+// every stored value. Seed data uses these labels too — see lib/seed.
+export const DEAL_SOURCES = [
+  "LinkedIn",
+  "Empfehlung",
+  "Kaltakquise",
+  "Inbound",
+  "Event",
+  "Website",
+  "Sonstige",
+] as const
+export type DealSource = (typeof DEAL_SOURCES)[number]
+
 // Form fields are mostly strings (HTML inputs return strings); company_id
 // and primary_contact_id are `string | null` because the comboboxes emit
 // null directly for the "none" option.
