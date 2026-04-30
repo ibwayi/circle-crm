@@ -450,3 +450,51 @@ export async function getDealStats(
 
   return stats
 }
+
+// Recent activity for the dashboard: last N deals ordered by updated_at
+// DESC, with the same flat company + primary_contact summary shape that
+// listDeals returns. Reuses listDeals' nested-select + post-process —
+// just sorts differently and caps the row count.
+export async function getRecentDealActivity(
+  client: Client,
+  opts: { limit: number }
+): Promise<DealWithRelations[]> {
+  const { data, error } = await client
+    .from("deals")
+    .select(
+      "*, company:companies(id, name), deal_contacts(is_primary, contact:contacts(id, first_name, last_name))"
+    )
+    .order("updated_at", { ascending: false })
+    .limit(opts.limit)
+  if (error) throw error
+
+  type RawRow = Deal & {
+    company: DealCompanySummary | null
+    deal_contacts: Array<{
+      is_primary: boolean
+      contact: DealPrimaryContactSummary | null
+    }>
+  }
+
+  return (data as unknown as RawRow[]).map((row): DealWithRelations => {
+    const primary = row.deal_contacts.find((dc) => dc.is_primary)
+    const primary_contact = primary?.contact ?? null
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      company_id: row.company_id,
+      title: row.title,
+      value_eur: row.value_eur,
+      stage: row.stage,
+      priority: row.priority,
+      source: row.source,
+      expected_close_date: row.expected_close_date,
+      probability: row.probability,
+      closed_at: row.closed_at,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      company: row.company,
+      primary_contact,
+    }
+  })
+}

@@ -2,6 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { ArrowRight } from "lucide-react"
 
+import { DashboardRecentActivity } from "@/components/dashboard/recent-activity"
 import { AddDealButton } from "@/components/deals/add-deal-button"
 import type { ContactOption } from "@/components/shared/contact-combobox"
 import {
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { listCompanies } from "@/lib/db/companies"
 import { listContacts } from "@/lib/db/contacts"
-import { getDealStats } from "@/lib/db/deals"
+import { getDealStats, getRecentDealActivity } from "@/lib/db/deals"
 import { createClient } from "@/lib/supabase/server"
 import { cn } from "@/lib/utils"
 
@@ -48,8 +49,9 @@ export default async function DashboardPage() {
   // The dashboard's primary stat block is now deal-driven. Companies /
   // contacts lists are fetched alongside so the Add Deal button has the
   // combobox data — same Promise.all parallelism as /deals.
-  const [stats, companiesFull, contactsFull] = await Promise.all([
+  const [stats, recentDeals, companiesFull, contactsFull] = await Promise.all([
     getDealStats(supabase),
+    getRecentDealActivity(supabase, { limit: 5 }),
     listCompanies(supabase),
     listContacts(supabase),
   ])
@@ -135,6 +137,8 @@ export default async function DashboardPage() {
           <p className="text-sm text-muted-foreground">{pipelineSubtext}</p>
         </CardContent>
       </Card>
+
+      <DashboardRecentActivity deals={recentDeals} />
 
       <section aria-labelledby="quick-actions-heading" className="space-y-3">
         <h3 id="quick-actions-heading" className="text-base font-medium">
