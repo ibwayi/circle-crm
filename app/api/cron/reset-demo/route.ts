@@ -44,11 +44,14 @@ export async function GET(request: Request) {
   try {
     const result = await seedDemoData(adminClient)
     console.log(
-      `Demo reset OK — ${result.customersInserted} customers, ${result.notesInserted} notes.`
+      `Demo reset OK — ${result.companiesInserted} companies, ${result.contactsInserted} contacts, ${result.dealsInserted} deals, ${result.notesInserted} notes.`
     )
     return NextResponse.json({
       ok: true,
-      customersInserted: result.customersInserted,
+      companiesInserted: result.companiesInserted,
+      contactsInserted: result.contactsInserted,
+      dealsInserted: result.dealsInserted,
+      dealContactsInserted: result.dealContactsInserted,
       notesInserted: result.notesInserted,
       timestamp: new Date().toISOString(),
     })

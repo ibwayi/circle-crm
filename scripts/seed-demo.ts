@@ -24,7 +24,7 @@ async function main() {
   try {
     const result = await seedDemoData(client)
     console.log(
-      `Inserted ${result.customersInserted} customers and ${result.notesInserted} notes.`
+      `Inserted ${result.companiesInserted} companies, ${result.contactsInserted} contacts, ${result.dealsInserted} deals (${result.dealContactsInserted} contact links), ${result.notesInserted} notes.`
     )
     console.log("Done.")
     process.exit(0)
