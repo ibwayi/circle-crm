@@ -49,10 +49,23 @@ export function CompanyFilter({
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
 
+  // Base UI's <Select.Value> displays the raw `value` of the selected item
+  // by default. Without a children function, the trigger would show the
+  // sentinel ("__all__") or the company UUID. The function maps each
+  // possible value back to its display label.
+  const companyName = (id: string) =>
+    companies.find((c) => c.id === id)?.name ?? id
+
   return (
     <Select value={value} onValueChange={handleChange}>
       <SelectTrigger className="w-[200px]">
-        <SelectValue placeholder="All companies" />
+        <SelectValue placeholder="All companies">
+          {(v: string | null) => {
+            if (v === null || v === ALL_VALUE) return "All companies"
+            if (v === NONE_VALUE) return "(No company)"
+            return companyName(v)
+          }}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={ALL_VALUE}>All companies</SelectItem>
