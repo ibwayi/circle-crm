@@ -133,6 +133,61 @@ export async function listStandaloneTasks(client: Client): Promise<Task[]> {
   return data
 }
 
+// Bucket queries for the /tasks page tabs and the dashboard widgets.
+// Each is a thin wrapper over .from("tasks") — kept here (not inline in
+// pages) per the WORKFLOW rule that all DB calls live in lib/db.
+
+export async function listTasksDueToday(client: Client): Promise<Task[]> {
+  const today = todayIso()
+  const { data, error } = await client
+    .from("tasks")
+    .select("*")
+    .is("completed_at", null)
+    .eq("due_date", today)
+    .order("due_time", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function listOverdueTasks(client: Client): Promise<Task[]> {
+  const today = todayIso()
+  const { data, error } = await client
+    .from("tasks")
+    .select("*")
+    .is("completed_at", null)
+    .lt("due_date", today)
+    .order("due_date", { ascending: true })
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function listUpcomingTasks(client: Client): Promise<Task[]> {
+  const today = todayIso()
+  // Open tasks where due_date > today OR due_date IS NULL. supabase-js's
+  // .or() takes a comma-separated PostgREST string.
+  const { data, error } = await client
+    .from("tasks")
+    .select("*")
+    .is("completed_at", null)
+    .or(`due_date.gt.${today},due_date.is.null`)
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function listCompletedTasks(client: Client): Promise<Task[]> {
+  const { data, error } = await client
+    .from("tasks")
+    .select("*")
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false })
+  if (error) throw error
+  return data
+}
+
 export async function getTask(
   client: Client,
   id: string
