@@ -142,7 +142,7 @@ export function TaskRow({
             </p>
           )}
           {showParentHint && (
-            <ParentHint task={optimisticTask} />
+            <ParentHint task={optimisticTask} parentOptions={parentOptions} />
           )}
         </div>
 
@@ -195,17 +195,34 @@ export function TaskRow({
   )
 }
 
-function ParentHint({ task }: { task: Task }) {
-  // Static label only — the /tasks page renders the parent name from
-  // its own catalog and passes it via a richer wrapper if needed. Here
-  // we just hint at the parent type so the user knows the task isn't
-  // standalone even before they click into it.
-  let label: string | null = null
-  if (task.deal_id) label = "→ Deal"
-  else if (task.contact_id) label = "→ Kontakt"
-  else if (task.company_id) label = "→ Firma"
+function ParentHint({
+  task,
+  parentOptions,
+}: {
+  task: Task
+  parentOptions?: TaskParentOption[]
+}) {
+  // When the page hands us its parent catalog we can render the full
+  // label ("→ Deal: Q3 Roadmap"). Without it, fall back to the type
+  // hint alone — useful even on detail pages where the parent is
+  // implicit but you might be looking at a sibling task list.
+  let key: string | null = null
+  let typeLabel = ""
+  if (task.deal_id) {
+    key = `deal:${task.deal_id}`
+    typeLabel = "Deal"
+  } else if (task.contact_id) {
+    key = `contact:${task.contact_id}`
+    typeLabel = "Kontakt"
+  } else if (task.company_id) {
+    key = `company:${task.company_id}`
+    typeLabel = "Firma"
+  }
 
-  if (!label) return null
+  if (!key) return null
+
+  const opt = parentOptions?.find((o) => o.value === key)
+  const label = opt ? `→ ${opt.label}` : `→ ${typeLabel}`
   return (
     <p className="mt-1 text-[11px] text-muted-foreground">{label}</p>
   )

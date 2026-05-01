@@ -13,6 +13,7 @@ import { UserMenu } from "@/components/shared/user-menu"
 function getPageTitle(pathname: string): string {
   if (pathname === "/dashboard") return "Dashboard"
   if (pathname === "/deals" || pathname.startsWith("/deals/")) return "Pipeline"
+  if (pathname === "/tasks") return "Tasks"
   if (pathname === "/companies") return "Companies"
   if (pathname.startsWith("/companies/")) return "Company"
   if (pathname === "/contacts") return "Contacts"

@@ -2,7 +2,13 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Building2, LayoutDashboard, Users, Workflow } from "lucide-react"
+import {
+  Building2,
+  LayoutDashboard,
+  ListTodo,
+  Users,
+  Workflow,
+} from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { UserMenu } from "@/components/shared/user-menu"
 import { cn } from "@/lib/utils"
@@ -16,6 +22,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/deals", label: "Pipeline", icon: Workflow },
+  { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/contacts", label: "Contacts", icon: Users },
 ]
