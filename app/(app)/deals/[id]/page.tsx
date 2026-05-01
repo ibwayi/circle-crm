@@ -224,6 +224,17 @@ export default async function DealDetailPage({
       <TasksSection
         target={{ type: "deal", dealId: deal.id }}
         initialTasks={tasks}
+        context={{
+          companyName: company?.name ?? undefined,
+          primaryContactName:
+            // contacts is sorted primary-first by getDeal — pick the
+            // first if it's flagged primary.
+            contacts[0]?.is_primary
+              ? [contacts[0].first_name, contacts[0].last_name]
+                  .filter(Boolean)
+                  .join(" ")
+              : undefined,
+        }}
       />
 
       <NotesSection

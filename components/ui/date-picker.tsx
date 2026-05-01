@@ -27,9 +27,34 @@ const NORMALIZED_FORMAT = "dd.MM.yyyy"
 function parseGermanDate(input: string): Date | null {
   const trimmed = input.trim()
   if (!trimmed) return null
+
+  // Pre-validate digit-component ranges before handing off to date-fns.
+  // date-fns parse() is lenient by default — it would happily turn
+  // "13.99.2026" into a date by overflowing month/day into the next
+  // year. Reject obvious junk (day > 31 or month > 12) up front so the
+  // form sees "Ungültiges Datum" instead of a silently-rolled date.
+  const m = /^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/.exec(trimmed)
+  if (m) {
+    const day = parseInt(m[1], 10)
+    const month = parseInt(m[2], 10)
+    if (day < 1 || day > 31 || month < 1 || month > 12) return null
+  }
+
   for (const f of TYPED_FORMATS) {
     const d = parse(trimmed, f, new Date(), { locale: de })
-    if (isValid(d)) return d
+    if (!isValid(d)) continue
+    // Defense in depth: even when components are in range, ensure the
+    // parsed date round-trips to the same components. Catches cases
+    // like "31.02.2026" (Feb 31 doesn't exist; date-fns typically
+    // rejects but the explicit check is cheap insurance).
+    const normalized = format(d, f, { locale: de })
+    if (normalized === trimmed.padStart(normalized.length, "0")) return d
+    // Also accept the canonical-padded form: user types "1.4.2026", we
+    // wouldn't match it via the mask but parse handles it; on the way
+    // back we get "01.04.2026" which doesn't equal "1.4.2026". The
+    // mask makes this branch unreachable for typed input — kept for
+    // pasted values that bypass the mask.
+    if (normalized === trimmed) return d
   }
   return null
 }
@@ -124,9 +149,11 @@ export function DatePicker({
     }
     const parsed = parseGermanDate(trimmed)
     if (!parsed) {
-      // Unparseable — leave the typing in place per spec, no error
-      // (the user is still composing). Don't commit a value.
-      setError(null)
+      // Unparseable — keep the typed text in place but flag it as
+      // invalid so the form doesn't silently commit a stale value.
+      lastSyncedRef.current = null
+      onChange(null)
+      setError("Ungültiges Datum.")
       return
     }
     if (!isWithinBounds(parsed, minDate, maxDate)) {
@@ -162,7 +189,8 @@ export function DatePicker({
             if (error) setError(null)
             // Eager commit when the user has typed a complete DD.MM.YYYY:
             // the form sees the value immediately, no need to wait for
-            // blur. Out-of-bounds dates still set the error inline.
+            // blur. Invalid components (day > 31, month > 12, impossible
+            // dates) and out-of-bounds dates both flag inline.
             if (formatted.length === 10) {
               const parsed = parseGermanDate(formatted)
               if (parsed && isWithinBounds(parsed, minDate, maxDate)) {
@@ -172,11 +200,15 @@ export function DatePicker({
                 lastSyncedRef.current = null
                 onChange(null)
                 setError("Datum außerhalb des erlaubten Bereichs.")
+              } else {
+                // 10 chars of "DD.MM.YYYY" shape but unparseable: invalid
+                // day/month components or an impossible calendar date
+                // like 31.02.2026. Surface the error eagerly so the user
+                // doesn't have to blur to learn about it.
+                lastSyncedRef.current = null
+                onChange(null)
+                setError("Ungültiges Datum.")
               }
-              // Parseable failure at length 10 (e.g. "31.02.2026" — Feb 31
-              // doesn't exist) leaves the form value alone; blur logic
-              // will keep the typed text in place per the unparseable
-              // branch.
             } else if (formatted === "") {
               lastSyncedRef.current = null
               onChange(null)

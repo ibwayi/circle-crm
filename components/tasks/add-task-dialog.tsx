@@ -2,6 +2,7 @@
 
 import {
   TaskForm,
+  type TaskContext,
   type TaskParentOption,
 } from "@/components/tasks/task-form"
 import {
@@ -18,6 +19,7 @@ export function AddTaskDialog({
   onOpenChange,
   fixedParent,
   parentOptions,
+  context,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -27,6 +29,10 @@ export function AddTaskDialog({
   // When set (and fixedParent is not), the picker is shown with these
   // options. Used from /tasks.
   parentOptions?: TaskParentOption[]
+  // Display-only context surfaced under the parent picker (or in its
+  // place when fixedParent is set). Used from detail pages that already
+  // know the entity's neighbours.
+  context?: TaskContext
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -42,6 +48,7 @@ export function AddTaskDialog({
           mode="create"
           fixedParent={fixedParent}
           parentOptions={parentOptions}
+          context={context}
           onSuccess={() => onOpenChange(false)}
           onCancel={() => onOpenChange(false)}
         />

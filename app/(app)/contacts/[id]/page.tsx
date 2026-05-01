@@ -192,6 +192,11 @@ export default async function ContactDetailPage({
       <TasksSection
         target={{ type: "contact", contactId: contact.id }}
         initialTasks={tasks}
+        context={{
+          companyName: company?.name ?? undefined,
+          // No "primary contact" hint on a contact page — we ARE the
+          // contact. Skipped intentionally.
+        }}
       />
 
       <NotesSection

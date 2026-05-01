@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Plus } from "lucide-react"
 
 import { AddTaskDialog } from "@/components/tasks/add-task-dialog"
+import type { TaskContext } from "@/components/tasks/task-form"
 import { TaskRow } from "@/components/tasks/task-row"
 import { Button } from "@/components/ui/button"
 import type { Task, TaskParent } from "@/lib/db/tasks"
@@ -27,9 +28,14 @@ function targetToParent(target: TasksTarget): TaskParent {
 export function TasksSection({
   target,
   initialTasks,
+  context,
 }: {
   target: TasksTarget
   initialTasks: Task[]
+  // Detail pages forward their entity's neighbours so the Add Task
+  // dialog can render a read-only "→ Firma: X — Hauptkontakt: Y" hint
+  // without the form having to re-fetch the relations.
+  context?: TaskContext
 }) {
   const [addOpen, setAddOpen] = useState(false)
 
@@ -80,6 +86,7 @@ export function TasksSection({
         open={addOpen}
         onOpenChange={setAddOpen}
         fixedParent={targetToParent(target)}
+        context={context}
       />
     </section>
   )

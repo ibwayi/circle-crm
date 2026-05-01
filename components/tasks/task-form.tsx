@@ -55,6 +55,20 @@ export type TaskParentOption = {
   parent: TaskParent
 }
 
+// Read-only display context surfaced when the form is opened from a
+// detail page. The page knows the entity's neighbours (the company a
+// deal belongs to, the deal's primary contact, etc.) and passes them
+// as hints — the user sees "this task will live on {Deal} at {Company}
+// — primary contact: {Name}" without an extra fetch from the form.
+//
+// Display-only for now (Phase 24.6 spec option (a)). The task's only
+// stored parent FK still comes from `fixedParent`. Persistent
+// contact-focus is a future-phase decision.
+export type TaskContext = {
+  companyName?: string
+  primaryContactName?: string
+}
+
 type Props = Mode & {
   // Fixed-parent mode: detail-page Add Task uses this. The picker is
   // hidden, the parent is implicit.
@@ -62,6 +76,10 @@ type Props = Mode & {
   // Free-parent mode: /tasks Add Task uses this. The picker shows
   // every option (standalone + each Deal / Contact / Company).
   parentOptions?: TaskParentOption[]
+  // Display-only context shown below the parent picker (or in its
+  // place when fixedParent is set). Optional — /tasks doesn't pass
+  // anything; detail pages pass the entity's neighbours.
+  context?: TaskContext
   onSuccess: (taskId: string) => void
   onCancel?: () => void
 }
@@ -137,8 +155,14 @@ export function TaskForm(props: Props) {
   const [pending, startTransition] = useTransition()
   const [submitting, setSubmitting] = useState(false)
 
+  // Create-mode default: due_date prefills to today. Most tasks people
+  // add are for "right now" or "today" — a smart prefill saves a click
+  // and the user can clear it with the date picker if it doesn't apply.
+  // Edit-mode preserves whatever the task already had (including null).
   const initialValues =
-    props.mode === "edit" ? taskToValues(props.task) : EMPTY_VALUES
+    props.mode === "edit"
+      ? taskToValues(props.task)
+      : { ...EMPTY_VALUES, due_date: format(new Date(), "yyyy-MM-dd") }
 
   const form = useForm<TaskFormValues>({
     resolver: standardSchemaResolver(taskSchema),
@@ -289,7 +313,18 @@ export function TaskForm(props: Props) {
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>
+                      {/* Base UI's SelectValue defaults to displaying
+                          the raw `value` of the matched item; we map
+                          back to the German label here. Same pattern
+                          as the source-dropdown fix in deal-form. */}
+                      {(v: string | null) => {
+                        if (v === null) return null
+                        return (
+                          PRIORITY_LABELS[v as TaskPriorityValue] ?? v
+                        )
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -315,7 +350,27 @@ export function TaskForm(props: Props) {
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue>
+                        {/* Resolve the encoded "type:id" / standalone
+                            sentinel back to a readable label. Without
+                            this children fn, Base UI's SelectValue would
+                            render the raw value (a UUID or "__standalone__")
+                            in the trigger. Same fix as the source-dropdown
+                            and contact-filter sentinel leaks. */}
+                        {(v: string | null) => {
+                          if (v === null || v === TASK_PARENT_NONE) {
+                            return (
+                              <span className="italic text-muted-foreground">
+                                Keine Verknüpfung
+                              </span>
+                            )
+                          }
+                          const opt = (props.parentOptions ?? []).find(
+                            (o) => o.value === v
+                          )
+                          return opt?.label ?? v
+                        }}
+                      </SelectValue>
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -340,6 +395,31 @@ export function TaskForm(props: Props) {
             )}
           />
         )}
+
+        {/* Detail-page context block — read-only hints about the
+            entity's neighbours so the user knows what the task is
+            "really about." Skipped if no useful fields are present. */}
+        {props.context &&
+          (props.context.companyName || props.context.primaryContactName) && (
+            <div className="space-y-1 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              {props.context.companyName && (
+                <div>
+                  Firma:{" "}
+                  <span className="text-foreground">
+                    {props.context.companyName}
+                  </span>
+                </div>
+              )}
+              {props.context.primaryContactName && (
+                <div>
+                  Hauptkontakt:{" "}
+                  <span className="text-foreground">
+                    {props.context.primaryContactName}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
         <div className="flex items-center justify-end gap-2 pt-2">
           {props.onCancel && (

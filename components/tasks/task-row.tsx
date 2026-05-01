@@ -3,16 +3,25 @@
 import { useOptimistic, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Trash2 } from "lucide-react"
+import { format } from "date-fns"
+import { de } from "date-fns/locale"
 import { toast } from "sonner"
 
 import {
   completeTaskAction,
+  rescheduleTaskAction,
   uncompleteTaskAction,
 } from "@/app/(app)/_actions/tasks"
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog"
 import { EditTaskDialog } from "@/components/tasks/edit-task-dialog"
 import type { TaskParentOption } from "@/components/tasks/task-form"
 import { Badge } from "@/components/ui/badge"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import type { Task } from "@/lib/db/tasks"
 import { formatDueDate, type DueTone } from "@/lib/utils/dates"
 import { cn } from "@/lib/utils"
@@ -65,16 +74,28 @@ export function TaskRow({
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
-  // useOptimistic: clicking the checkbox flips completed_at instantly,
-  // the action commits in the background, and on error the transition
-  // ends without applying the optimistic action — visual state snaps
-  // back to truth. Same idiom the kanban DnD uses for stage changes.
+  // useOptimistic: checkbox flips completed_at; date popover updates
+  // due_date. Both apply instantly and commit in the background; on
+  // error the transition ends without the action and the UI snaps back
+  // to truth. Discriminated reducer so future row mutations slot in
+  // without redoing the wiring.
+  type OptimisticAction =
+    | { kind: "complete"; completed: boolean }
+    | { kind: "reschedule"; due_date: string | null }
+
   const [optimisticTask, addOptimistic] = useOptimistic(
     task,
-    (state, action: { completed: boolean }) => ({
-      ...state,
-      completed_at: action.completed ? new Date().toISOString() : null,
-    })
+    (state, action: OptimisticAction) => {
+      switch (action.kind) {
+        case "complete":
+          return {
+            ...state,
+            completed_at: action.completed ? new Date().toISOString() : null,
+          }
+        case "reschedule":
+          return { ...state, due_date: action.due_date }
+      }
+    }
   )
 
   const isComplete = optimisticTask.completed_at !== null
@@ -88,10 +109,24 @@ export function TaskRow({
   function handleToggle() {
     const willComplete = !isComplete
     startTransition(async () => {
-      addOptimistic({ completed: willComplete })
+      addOptimistic({ kind: "complete", completed: willComplete })
       const result = willComplete
         ? await completeTaskAction(task.id)
         : await uncompleteTaskAction(task.id)
+      if (!result.ok) {
+        toast.error("Konnte nicht aktualisiert werden", {
+          description: result.error,
+        })
+      }
+      router.refresh()
+    })
+  }
+
+  function handleReschedule(d: Date | null) {
+    const iso = d ? format(d, "yyyy-MM-dd") : null
+    startTransition(async () => {
+      addOptimistic({ kind: "reschedule", due_date: iso })
+      const result = await rescheduleTaskAction(task.id, iso)
       if (!result.ok) {
         toast.error("Konnte nicht aktualisiert werden", {
           description: result.error,
@@ -156,12 +191,50 @@ export function TaskRow({
           >
             {PRIORITY_LABEL[optimisticTask.priority] ?? optimisticTask.priority}
           </Badge>
-          <Badge
-            variant="outline"
-            className={cn("shrink-0 text-[11px]", dueClass)}
-          >
-            {due.label}
-          </Badge>
+          {isComplete ? (
+            // Completed tasks render the date as a read-only badge —
+            // rescheduling a done task isn't a coherent action; the
+            // user should uncomplete first.
+            <Badge
+              variant="outline"
+              className={cn("shrink-0 text-[11px]", dueClass)}
+            >
+              {due.label}
+            </Badge>
+          ) : (
+            <Popover>
+              <PopoverTrigger
+                type="button"
+                aria-label="Fälligkeit ändern"
+                className={cn(
+                  "shrink-0 cursor-pointer rounded-md border px-2 py-0.5 text-[11px] transition-colors",
+                  "hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  dueClass
+                )}
+              >
+                {due.label}
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  locale={de}
+                  selected={
+                    optimisticTask.due_date
+                      ? new Date(optimisticTask.due_date)
+                      : undefined
+                  }
+                  defaultMonth={
+                    optimisticTask.due_date
+                      ? new Date(optimisticTask.due_date)
+                      : new Date()
+                  }
+                  onSelect={(d) => {
+                    handleReschedule(d ?? null)
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
           <button
             type="button"
             onClick={() => setDeleteOpen(true)}

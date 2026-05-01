@@ -166,6 +166,28 @@ export async function uncompleteTaskAction(
   }
 }
 
+// Quick date-only mutation for the inline-reschedule popover on task
+// rows. Reuses the partial-update helper from lib/db so it doesn't
+// need to round-trip the full TaskActionInput.
+export async function rescheduleTaskAction(
+  id: string,
+  dueDate: string | null
+): Promise<TaskActionResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  try {
+    const task = await updateTask(supabase, id, { dueDate })
+    revalidateForParent(parentFromTask(task))
+    return { ok: true, taskId: task.id }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}
+
 export async function deleteTaskAction(
   id: string
 ): Promise<TaskActionResult> {
