@@ -12,12 +12,14 @@ import {
   type DealStage,
 } from "@/components/deals/stage-badge"
 import { NotesSection } from "@/components/shared/notes-section"
+import { TasksSection } from "@/components/shared/tasks-section"
 import type { ContactOption } from "@/components/shared/contact-combobox"
 import { Card, CardContent } from "@/components/ui/card"
 import { listCompanies } from "@/lib/db/companies"
 import { listContacts } from "@/lib/db/contacts"
 import { getDeal } from "@/lib/db/deals"
 import { listNotesForDeal } from "@/lib/db/notes"
+import { listTasksForDeal } from "@/lib/db/tasks"
 import { createClient } from "@/lib/supabase/server"
 import { cn } from "@/lib/utils"
 
@@ -57,10 +59,11 @@ export default async function DealDetailPage({
   // Edit dialog needs the company list for the combobox; the contact picker
   // (in both the create-style edit form and the link dialog) needs every
   // contact the user has. Run both lookups in parallel with the notes fetch.
-  const [companiesFull, contactsFull, notes] = await Promise.all([
+  const [companiesFull, contactsFull, notes, tasks] = await Promise.all([
     listCompanies(supabase),
     listContacts(supabase),
     listNotesForDeal(supabase, deal.id),
+    listTasksForDeal(supabase, deal.id),
   ])
 
   const companies = companiesFull.map((c) => ({ id: c.id, name: c.name }))
@@ -216,6 +219,11 @@ export default async function DealDetailPage({
         dealCompanyId={deal.company_id}
         contacts={contacts}
         candidates={candidates}
+      />
+
+      <TasksSection
+        target={{ type: "deal", dealId: deal.id }}
+        initialTasks={tasks}
       />
 
       <NotesSection

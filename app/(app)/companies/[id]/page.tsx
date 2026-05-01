@@ -15,10 +15,12 @@ import { de } from "date-fns/locale"
 import { CompanyDetailActions } from "@/components/companies/company-detail-actions"
 import { StageBadge, type DealStage } from "@/components/deals/stage-badge"
 import { NotesSection } from "@/components/shared/notes-section"
+import { TasksSection } from "@/components/shared/tasks-section"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { getCompany } from "@/lib/db/companies"
 import { listNotesForCompany } from "@/lib/db/notes"
+import { listTasksForCompany } from "@/lib/db/tasks"
 import { createClient } from "@/lib/supabase/server"
 
 const eurFormatter = new Intl.NumberFormat("de-DE", {
@@ -48,7 +50,10 @@ export default async function CompanyDetailPage({
   }
 
   const { company, contacts, deals } = result
-  const notes = await listNotesForCompany(supabase, company.id)
+  const [notes, tasks] = await Promise.all([
+    listNotesForCompany(supabase, company.id),
+    listTasksForCompany(supabase, company.id),
+  ])
 
   return (
     <div className="space-y-6 p-6 md:p-8">
@@ -165,6 +170,11 @@ export default async function CompanyDetailPage({
       <ContactsSection contacts={contacts} />
 
       <DealsSection deals={deals} />
+
+      <TasksSection
+        target={{ type: "company", companyId: company.id }}
+        initialTasks={tasks}
+      />
 
       <NotesSection
         target={{ type: "company", companyId: company.id }}

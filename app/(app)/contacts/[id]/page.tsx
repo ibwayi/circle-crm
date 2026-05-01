@@ -14,11 +14,13 @@ import { de } from "date-fns/locale"
 import { ContactDetailActions } from "@/components/contacts/contact-detail-actions"
 import { StageBadge, type DealStage } from "@/components/deals/stage-badge"
 import { NotesSection } from "@/components/shared/notes-section"
+import { TasksSection } from "@/components/shared/tasks-section"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { listCompanies } from "@/lib/db/companies"
 import { getContact } from "@/lib/db/contacts"
 import { listNotesForContact } from "@/lib/db/notes"
+import { listTasksForContact } from "@/lib/db/tasks"
 import { createClient } from "@/lib/supabase/server"
 
 const eurFormatter = new Intl.NumberFormat("de-DE", {
@@ -61,7 +63,10 @@ export default async function ContactDetailPage({
   const companies = companiesFull.map((c) => ({ id: c.id, name: c.name }))
 
   const { contact, company, deals } = result
-  const notes = await listNotesForContact(supabase, contact.id)
+  const [notes, tasks] = await Promise.all([
+    listNotesForContact(supabase, contact.id),
+    listTasksForContact(supabase, contact.id),
+  ])
   const fullName = [contact.first_name, contact.last_name]
     .filter(Boolean)
     .join(" ")
@@ -183,6 +188,11 @@ export default async function ContactDetailPage({
       </Card>
 
       <DealsSection deals={deals} />
+
+      <TasksSection
+        target={{ type: "contact", contactId: contact.id }}
+        initialTasks={tasks}
+      />
 
       <NotesSection
         target={{ type: "contact", contactId: contact.id }}
