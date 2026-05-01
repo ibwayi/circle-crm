@@ -3,8 +3,10 @@ import { redirect } from "next/navigation"
 import { ArrowRight } from "lucide-react"
 
 import { DashboardRecentActivity } from "@/components/dashboard/recent-activity"
+import { DashboardTasksDueToday } from "@/components/dashboard/tasks-due-today"
 import { AddDealButton } from "@/components/deals/add-deal-button"
 import type { ContactOption } from "@/components/shared/contact-combobox"
+import type { TaskParentOption } from "@/components/tasks/task-form"
 import {
   Card,
   CardContent,
@@ -14,7 +16,12 @@ import {
 } from "@/components/ui/card"
 import { listCompanies } from "@/lib/db/companies"
 import { listContacts } from "@/lib/db/contacts"
-import { getDealStats, getRecentDealActivity } from "@/lib/db/deals"
+import { getDealStats, getRecentDealActivity, listDeals } from "@/lib/db/deals"
+import {
+  getTaskStats,
+  listOverdueTasks,
+  listTasksDueToday,
+} from "@/lib/db/tasks"
 import { createClient } from "@/lib/supabase/server"
 import { cn } from "@/lib/utils"
 
@@ -30,8 +37,9 @@ const eurFormatterCompact = new Intl.NumberFormat("de-DE", {
 })
 
 // Tailwind needs the full class names at build time — no string templating.
-const ACCENT_CLASS: Record<"active" | "won" | "lost", string> = {
+const ACCENT_CLASS: Record<"active" | "tasks" | "won" | "lost", string> = {
   active: "border-t-2 border-t-status-lead",
+  tasks: "border-t-2 border-t-status-proposal",
   won: "border-t-2 border-t-status-customer",
   lost: "border-t-2 border-t-status-closed",
 }
@@ -46,14 +54,28 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  // The dashboard's primary stat block is now deal-driven. Companies /
-  // contacts lists are fetched alongside so the Add Deal button has the
-  // combobox data — same Promise.all parallelism as /deals.
-  const [stats, recentDeals, companiesFull, contactsFull] = await Promise.all([
+  // The dashboard's primary stat block is now deal- AND task-driven. Plus
+  // companies / contacts (for the Add Deal combobox) and a separate deal
+  // list (for the task picker's parent options). Single Promise.all so
+  // the page renders in one round-trip.
+  const [
+    stats,
+    recentDeals,
+    companiesFull,
+    contactsFull,
+    taskStats,
+    todayTasks,
+    overdueTasks,
+    deals,
+  ] = await Promise.all([
     getDealStats(supabase),
     getRecentDealActivity(supabase, { limit: 5 }),
     listCompanies(supabase),
     listContacts(supabase),
+    getTaskStats(supabase, user.id),
+    listTasksDueToday(supabase),
+    listOverdueTasks(supabase),
+    listDeals(supabase),
   ])
 
   const companies = companiesFull.map((c) => ({ id: c.id, name: c.name }))
@@ -66,6 +88,30 @@ export default async function DashboardPage() {
     company_id: c.company_id,
     company_name: c.company?.name ?? null,
   }))
+
+  // Parent-options catalog for the task rows' edit dialog. Same shape
+  // /tasks builds — kept inline here to avoid pulling another shared
+  // helper just for this one dashboard wiring.
+  const parentOptions: TaskParentOption[] = [
+    ...deals.map((d) => ({
+      value: `deal:${d.id}`,
+      label: `Deal: ${d.title}`,
+      parent: { type: "deal" as const, dealId: d.id },
+    })),
+    ...contactsFull.map((c) => {
+      const name = [c.first_name, c.last_name].filter(Boolean).join(" ")
+      return {
+        value: `contact:${c.id}`,
+        label: `Kontakt: ${name}`,
+        parent: { type: "contact" as const, contactId: c.id },
+      }
+    }),
+    ...companiesFull.map((co) => ({
+      value: `company:${co.id}`,
+      label: `Firma: ${co.name}`,
+      parent: { type: "company" as const, companyId: co.id },
+    })),
+  ]
 
   const pipelineSubtext =
     stats.activeCount === 0
@@ -88,13 +134,25 @@ export default async function DashboardPage() {
 
       <section
         aria-label="Pipeline summary"
-        className="grid grid-cols-2 gap-4 md:grid-cols-3"
+        className="grid grid-cols-2 gap-4 md:grid-cols-4"
       >
         <StatCard
           label="Active deals"
           value={stats.activeCount}
           accent="active"
           href="/deals"
+        />
+        <StatCard
+          label="Tasks today"
+          value={taskStats.dueToday}
+          subtext={
+            taskStats.overdue > 0
+              ? `${taskStats.overdue} überfällig`
+              : undefined
+          }
+          subtextTone={taskStats.overdue > 0 ? "destructive" : "default"}
+          accent="tasks"
+          href="/tasks?tab=today"
         />
         <StatCard
           label="Won this month"
@@ -137,6 +195,12 @@ export default async function DashboardPage() {
           <p className="text-sm text-muted-foreground">{pipelineSubtext}</p>
         </CardContent>
       </Card>
+
+      <DashboardTasksDueToday
+        today={todayTasks}
+        overdue={overdueTasks}
+        parentOptions={parentOptions}
+      />
 
       <DashboardRecentActivity deals={recentDeals} />
 
@@ -185,13 +249,15 @@ function StatCard({
   label,
   value,
   subtext,
+  subtextTone = "default",
   accent,
   href,
 }: {
   label: string
   value: number
   subtext?: string
-  accent?: "active" | "won" | "lost"
+  subtextTone?: "default" | "destructive"
+  accent?: "active" | "tasks" | "won" | "lost"
   href: string
 }) {
   return (
@@ -211,7 +277,14 @@ function StatCard({
             {value}
           </CardTitle>
           {subtext && (
-            <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+            <p
+              className={cn(
+                "mt-1 text-xs tabular-nums",
+                subtextTone === "destructive"
+                  ? "text-destructive"
+                  : "text-muted-foreground"
+              )}
+            >
               {subtext}
             </p>
           )}
