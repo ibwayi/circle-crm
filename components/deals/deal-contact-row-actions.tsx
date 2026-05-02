@@ -58,7 +58,7 @@ export function DealContactRowActions({
             aria-label={`Set ${fullName(contact)} as primary contact`}
             title="Set as primary"
             className={cn(
-              "inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+              "inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors",
               "text-muted-foreground hover:bg-muted hover:text-foreground",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             )}
@@ -72,7 +72,7 @@ export function DealContactRowActions({
           aria-label={`Remove ${fullName(contact)} from this deal`}
           title="Remove from deal"
           className={cn(
-            "inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+            "inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors",
             "text-muted-foreground hover:bg-muted hover:text-destructive",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           )}

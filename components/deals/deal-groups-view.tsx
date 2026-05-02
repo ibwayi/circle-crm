@@ -134,7 +134,7 @@ export function DealGroupsView({
               disabled={isEmpty}
               className={cn(
                 "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors",
-                !isEmpty && "hover:bg-muted/50",
+                !isEmpty && "cursor-pointer hover:bg-muted/50",
                 isEmpty && "cursor-default"
               )}
             >

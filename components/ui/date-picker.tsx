@@ -229,7 +229,7 @@ export function DatePicker({
             disabled={disabled}
             aria-label="Kalender öffnen"
             className={cn(
-              "absolute right-1 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md transition-colors",
+              "absolute right-1 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md transition-colors",
               "text-muted-foreground hover:bg-muted hover:text-foreground",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               "disabled:cursor-not-allowed disabled:opacity-50"

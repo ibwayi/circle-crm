@@ -3,8 +3,25 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+// Button base variants. The `cursor-pointer` is in the base so every
+// Button across the app shows the hand cursor on hover — Base UI's
+// Button primitive doesn't add it, and a stray browser default leaves
+// the cursor as text/arrow on `<button>` elements (Phase 24.8 audit).
+//
+// **Cursor convention for new components:**
+//   * `<Button>` from this file — cursor-pointer is built in, no action.
+//   * Raw `<button>` elements — add `cursor-pointer` explicitly.
+//   * `<a>` / `<Link>` styled as buttons — add `cursor-pointer` (browsers
+//      already give links pointer, but a styled link inside a flex row
+//      can be ambiguous; explicit is fine).
+//   * `onClick` on `<div>` / `<span>` / `<article>` — add `cursor-pointer`
+//      AND a role/tabIndex/keyboard handler if the click is the only
+//      affordance (we currently use real <button> wrappers everywhere
+//      that's interactive).
+//   * Disabled buttons — keep `disabled:cursor-not-allowed` (already in
+//      this base).
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

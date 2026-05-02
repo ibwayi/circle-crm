@@ -33,7 +33,7 @@ export default function GlobalError({
               <button
                 type="button"
                 onClick={() => reset()}
-                className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                className="inline-flex h-8 cursor-pointer items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 Reload
               </button>

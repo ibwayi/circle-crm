@@ -47,7 +47,7 @@ export function NoteItem({
             aria-label="Delete note"
             title="Delete note"
             className={cn(
-              "inline-flex h-7 w-7 items-center justify-center rounded-md transition-opacity",
+              "inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-opacity",
               "text-muted-foreground hover:bg-muted hover:text-destructive",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               "opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"

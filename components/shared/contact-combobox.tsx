@@ -91,7 +91,7 @@ export function ContactCombobox({
         type="button"
         disabled={disabled}
         className={cn(
-          "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-sm",
+          "flex h-9 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-sm",
           "transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           "disabled:cursor-not-allowed disabled:opacity-50"
@@ -113,7 +113,7 @@ export function ContactCombobox({
               <button
                 type="button"
                 onClick={() => setScoped((s) => !s)}
-                className="rounded-md px-2 py-1 text-foreground transition-colors hover:bg-muted"
+                className="cursor-pointer rounded-md px-2 py-1 text-foreground transition-colors hover:bg-muted"
               >
                 {scoped ? "Show all" : "Filter by company"}
               </button>

@@ -256,7 +256,7 @@ function SortableTh({
         type="button"
         onClick={() => onToggle(field)}
         className={cn(
-          "inline-flex items-center gap-1 text-left transition-colors hover:text-foreground",
+          "inline-flex cursor-pointer items-center gap-1 text-left transition-colors hover:text-foreground",
           active ? "text-foreground" : "text-muted-foreground"
         )}
       >
