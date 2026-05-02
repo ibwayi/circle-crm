@@ -1,5 +1,6 @@
 "use client"
 
+import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
 import {
   TaskForm,
   type TaskContext,
@@ -19,6 +20,7 @@ export function AddTaskDialog({
   onOpenChange,
   fixedParent,
   parentOptions,
+  dealOptions,
   context,
 }: {
   open: boolean
@@ -26,9 +28,10 @@ export function AddTaskDialog({
   // When set, the parent picker is hidden and the task is created with
   // this parent. Used from Deal/Contact/Company detail pages.
   fixedParent?: TaskParent
-  // When set (and fixedParent is not), the picker is shown with these
-  // options. Used from /tasks.
+  // Legacy thin catalog kept for the TaskRow ParentHint fallback.
   parentOptions?: TaskParentOption[]
+  // Rich deal catalog for the combobox + Pipeline modal. Phase 24.8.
+  dealOptions?: PipelineDealOption[]
   // Display-only context surfaced under the parent picker (or in its
   // place when fixedParent is set). Used from detail pages that already
   // know the entity's neighbours.
@@ -48,6 +51,7 @@ export function AddTaskDialog({
           mode="create"
           fixedParent={fixedParent}
           parentOptions={parentOptions}
+          dealOptions={dealOptions}
           context={context}
           onSuccess={() => onOpenChange(false)}
           onCancel={() => onOpenChange(false)}

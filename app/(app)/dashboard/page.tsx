@@ -5,7 +5,9 @@ import { ArrowRight } from "lucide-react"
 import { DashboardRecentActivity } from "@/components/dashboard/recent-activity"
 import { DashboardTasksDueToday } from "@/components/dashboard/tasks-due-today"
 import { AddDealButton } from "@/components/deals/add-deal-button"
+import type { DealStage } from "@/components/deals/stage-badge"
 import type { ContactOption } from "@/components/shared/contact-combobox"
+import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
 import type { TaskParentOption } from "@/components/tasks/task-form"
 import {
   Card,
@@ -92,11 +94,29 @@ export default async function DashboardPage() {
 
   // Parent-options catalog for the task rows' edit dialog. Phase 24.7:
   // Deal-only — Standalone is the implicit sentinel inside TaskForm.
+  // Phase 24.8 added the rich `dealOptions` catalog used by the
+  // combobox + Pipeline modal; `parentOptions` stays as the ParentHint
+  // label-fallback resolver.
   const parentOptions: TaskParentOption[] = deals.map((d) => ({
     value: `deal:${d.id}`,
     label: `Deal: ${d.title}`,
     parent: { type: "deal" as const, dealId: d.id },
   }))
+  const dealOptions: PipelineDealOption[] = deals.map((d) => {
+    const primaryContactName = d.primary_contact
+      ? [d.primary_contact.first_name, d.primary_contact.last_name]
+          .filter(Boolean)
+          .join(" ")
+      : null
+    return {
+      id: d.id,
+      title: d.title,
+      companyName: d.company?.name ?? null,
+      stage: d.stage as DealStage,
+      primaryContactName,
+      valueEur: d.value_eur,
+    }
+  })
 
   // Per-deal transitive context for the visible task rows so each row
   // can render Firma + Hauptkontakt alongside the deal hint. Limited to
@@ -193,6 +213,7 @@ export default async function DashboardPage() {
         today={todayTasks}
         overdue={overdueTasks}
         parentOptions={parentOptions}
+        dealOptions={dealOptions}
         dealContexts={dealContexts}
       />
 

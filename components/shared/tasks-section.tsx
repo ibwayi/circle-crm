@@ -4,7 +4,11 @@ import { useState } from "react"
 import { Plus } from "lucide-react"
 
 import { AddTaskDialog } from "@/components/tasks/add-task-dialog"
-import type { TaskContext } from "@/components/tasks/task-form"
+import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
+import type {
+  TaskContext,
+  TaskParentOption,
+} from "@/components/tasks/task-form"
 import { TaskRow } from "@/components/tasks/task-row"
 import { Button } from "@/components/ui/button"
 import type { Task, TaskDealContext, TaskParent } from "@/lib/db/tasks"
@@ -45,6 +49,14 @@ type Props = {
   // listings to render Firma / Hauptkontakt under each row's parent
   // hint. Pages build it via getTaskDealContexts and pass it down.
   dealContexts?: Map<string, TaskDealContext>
+  // Rich deal catalog forwarded into TaskRow → EditTaskDialog so the
+  // edit dialog can render real labels in its combobox + Pipeline
+  // modal. Without this the dialog falls back to raw "deal:<uuid>"
+  // strings (Phase 24.8 Bug 2).
+  dealOptions?: PipelineDealOption[]
+  // Legacy thin catalog kept for ParentHint label fallback. Pages
+  // already passing dealOptions can omit this.
+  parentOptions?: TaskParentOption[]
   // Read-only mode — required for transitive targets (Contact /
   // Company), optional for deal targets if the page wants to lock
   // editing for some reason. Hides the Add button + per-row delete +
@@ -63,6 +75,8 @@ export function TasksSection({
   initialTasks,
   context,
   dealContexts,
+  dealOptions,
+  parentOptions,
   readOnly = false,
   heading,
   emptyMessage,
@@ -118,6 +132,8 @@ export function TasksSection({
               dealContext={
                 task.deal_id ? dealContexts?.get(task.deal_id) ?? null : null
               }
+              dealOptions={dealOptions}
+              parentOptions={parentOptions}
               readOnly={readOnly}
             />
           ))}
@@ -132,6 +148,8 @@ export function TasksSection({
               dealContext={
                 task.deal_id ? dealContexts?.get(task.deal_id) ?? null : null
               }
+              dealOptions={dealOptions}
+              parentOptions={parentOptions}
               readOnly={readOnly}
             />
           ))}
@@ -144,6 +162,8 @@ export function TasksSection({
           onOpenChange={setAddOpen}
           fixedParent={fixedParent}
           context={context}
+          parentOptions={parentOptions}
+          dealOptions={dealOptions}
         />
       )}
     </section>

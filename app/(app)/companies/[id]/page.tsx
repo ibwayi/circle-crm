@@ -16,9 +16,12 @@ import { CompanyDetailActions } from "@/components/companies/company-detail-acti
 import { StageBadge, type DealStage } from "@/components/deals/stage-badge"
 import { NotesSection } from "@/components/shared/notes-section"
 import { TasksSection } from "@/components/shared/tasks-section"
+import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
+import type { TaskParentOption } from "@/components/tasks/task-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { getCompany } from "@/lib/db/companies"
+import { listDeals } from "@/lib/db/deals"
 import { listNotesForCompany } from "@/lib/db/notes"
 import {
   getTaskDealContexts,
@@ -53,9 +56,10 @@ export default async function CompanyDetailPage({
   }
 
   const { company, contacts, deals } = result
-  const [notes, tasks] = await Promise.all([
+  const [notes, tasks, allDeals] = await Promise.all([
     listNotesForCompany(supabase, company.id),
     listTasksForCompanyTransitive(supabase, company.id),
+    listDeals(supabase),
   ])
   // Per-deal context map for the transitive listing. The company is
   // implicit on this page (we ARE the company), so each row renders
@@ -68,6 +72,29 @@ export default async function CompanyDetailPage({
       { ...ctx, companyId: null, companyName: null },
     ])
   )
+
+  // Catalogs for the EditTaskDialog mounted inside the readOnly
+  // TasksSection. Without these the dialog can't resolve labels.
+  const taskParentOptions: TaskParentOption[] = allDeals.map((d) => ({
+    value: `deal:${d.id}`,
+    label: `Deal: ${d.title}`,
+    parent: { type: "deal" as const, dealId: d.id },
+  }))
+  const taskDealOptions: PipelineDealOption[] = allDeals.map((d) => {
+    const primaryContactName = d.primary_contact
+      ? [d.primary_contact.first_name, d.primary_contact.last_name]
+          .filter(Boolean)
+          .join(" ")
+      : null
+    return {
+      id: d.id,
+      title: d.title,
+      companyName: d.company?.name ?? null,
+      stage: d.stage as DealStage,
+      primaryContactName,
+      valueEur: d.value_eur,
+    }
+  })
 
   return (
     <div className="space-y-6 p-6 md:p-8">
@@ -189,6 +216,8 @@ export default async function CompanyDetailPage({
         target={{ type: "transitive-company", companyId: company.id }}
         initialTasks={tasks}
         dealContexts={dealContexts}
+        parentOptions={taskParentOptions}
+        dealOptions={taskDealOptions}
         readOnly
         heading={`Aufgaben aus Deals (${tasks.length})`}
         emptyMessage={`Keine offenen Aufgaben in den Deals von ${company.name}.`}

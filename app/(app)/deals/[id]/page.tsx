@@ -14,10 +14,12 @@ import {
 import { NotesSection } from "@/components/shared/notes-section"
 import { TasksSection } from "@/components/shared/tasks-section"
 import type { ContactOption } from "@/components/shared/contact-combobox"
+import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
+import type { TaskParentOption } from "@/components/tasks/task-form"
 import { Card, CardContent } from "@/components/ui/card"
 import { listCompanies } from "@/lib/db/companies"
 import { listContacts } from "@/lib/db/contacts"
-import { getDeal } from "@/lib/db/deals"
+import { getDeal, listDeals } from "@/lib/db/deals"
 import { listNotesForDeal } from "@/lib/db/notes"
 import { listTasksForDeal } from "@/lib/db/tasks"
 import { createClient } from "@/lib/supabase/server"
@@ -58,10 +60,13 @@ export default async function DealDetailPage({
 
   // Edit dialog needs the company list for the combobox; the contact picker
   // (in both the create-style edit form and the link dialog) needs every
-  // contact the user has. Run both lookups in parallel with the notes fetch.
-  const [companiesFull, contactsFull, notes, tasks] = await Promise.all([
+  // contact the user has. The TasksSection's edit-task dialog needs the
+  // full deals catalog so its combobox + Pipeline modal can resolve
+  // "deal:<uuid>" → real labels. Parallel-fetch with notes / tasks.
+  const [companiesFull, contactsFull, allDeals, notes, tasks] = await Promise.all([
     listCompanies(supabase),
     listContacts(supabase),
+    listDeals(supabase),
     listNotesForDeal(supabase, deal.id),
     listTasksForDeal(supabase, deal.id),
   ])
@@ -76,6 +81,28 @@ export default async function DealDetailPage({
     company_id: c.company_id,
     company_name: c.company?.name ?? null,
   }))
+
+  // Catalogs for the TasksSection's edit dialog combobox + modal.
+  const taskParentOptions: TaskParentOption[] = allDeals.map((d) => ({
+    value: `deal:${d.id}`,
+    label: `Deal: ${d.title}`,
+    parent: { type: "deal" as const, dealId: d.id },
+  }))
+  const taskDealOptions: PipelineDealOption[] = allDeals.map((d) => {
+    const primaryContactName = d.primary_contact
+      ? [d.primary_contact.first_name, d.primary_contact.last_name]
+          .filter(Boolean)
+          .join(" ")
+      : null
+    return {
+      id: d.id,
+      title: d.title,
+      companyName: d.company?.name ?? null,
+      stage: d.stage as DealStage,
+      primaryContactName,
+      valueEur: d.value_eur,
+    }
+  })
 
   const stage = deal.stage as DealStage
   const stageConfig = STAGE_CONFIG[stage]
@@ -235,6 +262,8 @@ export default async function DealDetailPage({
                   .join(" ")
               : undefined,
         }}
+        parentOptions={taskParentOptions}
+        dealOptions={taskDealOptions}
         heading="Aufgaben"
       />
 

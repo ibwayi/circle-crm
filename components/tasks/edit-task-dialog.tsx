@@ -1,5 +1,6 @@
 "use client"
 
+import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
 import {
   TaskForm,
   type TaskParentOption,
@@ -18,14 +19,17 @@ export function EditTaskDialog({
   open,
   onOpenChange,
   parentOptions,
+  dealOptions,
 }: {
   task: Task
   open: boolean
   onOpenChange: (open: boolean) => void
-  // The parent picker is always shown on edit so users can re-assign a
-  // task between Deal / Contact / Company / standalone. Pass the full
-  // catalog from the page.
+  // Legacy thin catalog kept for ParentHint fallback resolution.
   parentOptions?: TaskParentOption[]
+  // Rich deal catalog for the combobox + Pipeline modal. Pages with a
+  // mounted EditTaskDialog must pass this so the dialog can resolve
+  // "deal:<uuid>" to a real label and offer the visual picker.
+  dealOptions?: PipelineDealOption[]
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -42,6 +46,7 @@ export function EditTaskDialog({
           mode="edit"
           task={task}
           parentOptions={parentOptions}
+          dealOptions={dealOptions}
           onSuccess={() => onOpenChange(false)}
           onCancel={() => onOpenChange(false)}
         />

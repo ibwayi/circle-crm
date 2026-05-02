@@ -15,6 +15,7 @@ import {
 } from "@/app/(app)/_actions/tasks"
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog"
 import { EditTaskDialog } from "@/components/tasks/edit-task-dialog"
+import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
 import type { TaskParentOption } from "@/components/tasks/task-form"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
@@ -55,15 +56,20 @@ const DUE_TONE_CLASS: Record<DueTone, string> = {
 export function TaskRow({
   task,
   parentOptions,
+  dealOptions,
   showParentHint,
   dealContext,
   readOnly = false,
 }: {
   task: Task
-  // Edit dialog needs the catalog of selectable parents (now: each Deal
-  // + Standalone). /tasks and the dashboard pass the full catalog;
-  // detail-page rows omit it (the implicit parent is the page's entity).
+  // Legacy thin catalog used as a label fallback by ParentHint when no
+  // dealContext is supplied.
   parentOptions?: TaskParentOption[]
+  // Rich deal catalog for the EditTaskDialog's combobox + Pipeline
+  // modal. Pages mounting TaskRow must pass this so editing a task
+  // shows real labels instead of raw "deal:<uuid>" strings (Bug 2 from
+  // Phase 24.8 spec).
+  dealOptions?: PipelineDealOption[]
   // Render the parent hint line under the title. /tasks and dashboard
   // set this; detail-page rows leave it off because the parent is
   // already visible above the list.
@@ -172,7 +178,7 @@ export function TaskRow({
             type="button"
             onClick={handleTitleClick}
             className={cn(
-              "text-left text-sm font-medium underline-offset-4 transition-colors hover:underline",
+              "cursor-pointer text-left text-sm font-medium underline-offset-4 transition-colors hover:underline",
               isComplete && "line-through"
             )}
           >
@@ -259,7 +265,7 @@ export function TaskRow({
               aria-label="Aufgabe löschen"
               title="Löschen"
               className={cn(
-                "inline-flex h-7 w-7 items-center justify-center rounded-md transition-opacity",
+                "inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-opacity",
                 "text-muted-foreground hover:bg-muted hover:text-destructive",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 "opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
@@ -276,6 +282,7 @@ export function TaskRow({
         open={editOpen}
         onOpenChange={setEditOpen}
         parentOptions={parentOptions}
+        dealOptions={dealOptions}
       />
       {!readOnly && (
         <DeleteTaskDialog

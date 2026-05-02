@@ -4,16 +4,19 @@ import { useState } from "react"
 import { Plus } from "lucide-react"
 
 import { AddTaskDialog } from "@/components/tasks/add-task-dialog"
+import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
 import type { TaskParentOption } from "@/components/tasks/task-form"
 import { Button } from "@/components/ui/button"
 
 export function AddTaskButton({
   parentOptions,
+  dealOptions,
   variant = "default",
   size = "default",
   label = "Aufgabe hinzufügen",
 }: {
   parentOptions: TaskParentOption[]
+  dealOptions: PipelineDealOption[]
   variant?: "default" | "outline"
   size?: "default" | "sm"
   label?: string
@@ -34,6 +37,7 @@ export function AddTaskButton({
         open={open}
         onOpenChange={setOpen}
         parentOptions={parentOptions}
+        dealOptions={dealOptions}
       />
     </>
   )

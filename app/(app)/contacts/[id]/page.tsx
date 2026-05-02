@@ -15,10 +15,13 @@ import { ContactDetailActions } from "@/components/contacts/contact-detail-actio
 import { StageBadge, type DealStage } from "@/components/deals/stage-badge"
 import { NotesSection } from "@/components/shared/notes-section"
 import { TasksSection } from "@/components/shared/tasks-section"
+import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
+import type { TaskParentOption } from "@/components/tasks/task-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { listCompanies } from "@/lib/db/companies"
 import { getContact } from "@/lib/db/contacts"
+import { listDeals } from "@/lib/db/deals"
 import { listNotesForContact } from "@/lib/db/notes"
 import {
   getTaskDealContexts,
@@ -66,9 +69,10 @@ export default async function ContactDetailPage({
   const companies = companiesFull.map((c) => ({ id: c.id, name: c.name }))
 
   const { contact, company, deals } = result
-  const [notes, tasks] = await Promise.all([
+  const [notes, tasks, allDeals] = await Promise.all([
     listNotesForContact(supabase, contact.id),
     listTasksForContactTransitive(supabase, contact.id),
+    listDeals(supabase),
   ])
   // Build the per-deal context map for the transitive task list. The
   // contact is implicit (we ARE the contact), so the rows render Deal
@@ -81,6 +85,30 @@ export default async function ContactDetailPage({
       { ...ctx, primaryContactId: null, primaryContactName: null },
     ])
   )
+
+  // Catalogs for the EditTaskDialog mounted inside readOnly TasksSection.
+  // Without these the dialog falls back to raw "deal:<uuid>" labels
+  // (Phase 24.8 Bug 2).
+  const taskParentOptions: TaskParentOption[] = allDeals.map((d) => ({
+    value: `deal:${d.id}`,
+    label: `Deal: ${d.title}`,
+    parent: { type: "deal" as const, dealId: d.id },
+  }))
+  const taskDealOptions: PipelineDealOption[] = allDeals.map((d) => {
+    const primaryContactName = d.primary_contact
+      ? [d.primary_contact.first_name, d.primary_contact.last_name]
+          .filter(Boolean)
+          .join(" ")
+      : null
+    return {
+      id: d.id,
+      title: d.title,
+      companyName: d.company?.name ?? null,
+      stage: d.stage as DealStage,
+      primaryContactName,
+      valueEur: d.value_eur,
+    }
+  })
   const fullName = [contact.first_name, contact.last_name]
     .filter(Boolean)
     .join(" ")
@@ -207,6 +235,8 @@ export default async function ContactDetailPage({
         target={{ type: "transitive-contact", contactId: contact.id }}
         initialTasks={tasks}
         dealContexts={dealContexts}
+        parentOptions={taskParentOptions}
+        dealOptions={taskDealOptions}
         readOnly
         heading={`Aufgaben aus verknüpften Deals (${tasks.length})`}
         emptyMessage={`Keine offenen Aufgaben in den Deals von ${fullName}.`}

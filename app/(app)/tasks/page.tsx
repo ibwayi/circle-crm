@@ -1,10 +1,12 @@
 import { ListTodo } from "lucide-react"
 
+import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
 import { AddTaskButton } from "@/components/tasks/add-task-button"
 import type { TaskParentOption } from "@/components/tasks/task-form"
 import { TaskRow } from "@/components/tasks/task-row"
 import { TasksTabs, type TasksTab } from "@/components/tasks/tasks-tabs"
-import { listDeals } from "@/lib/db/deals"
+import { listDeals, type DealWithRelations } from "@/lib/db/deals"
+import type { DealStage } from "@/components/deals/stage-badge"
 import {
   getTaskDealContexts,
   getTaskStats,
@@ -41,12 +43,35 @@ function buildParentOptions(
   deals: { id: string; title: string }[]
 ): TaskParentOption[] {
   // Phase 24.7: only Deal options remain. Standalone is the implicit
-  // sentinel rendered separately by TaskForm.
+  // sentinel rendered separately by TaskForm. Phase 24.8: kept as a
+  // ParentHint label-fallback resolver — the rich combobox + modal use
+  // PipelineDealOption[] instead.
   return deals.map((d) => ({
     value: `deal:${d.id}`,
     label: `Deal: ${d.title}`,
     parent: { type: "deal", dealId: d.id },
   }))
+}
+
+// Convert listDeals's flat shape into the rich option used by the
+// combobox + Pipeline modal. Centralised here so /tasks, /dashboard,
+// and the three detail pages all build the catalog the same way.
+function buildDealOptions(deals: DealWithRelations[]): PipelineDealOption[] {
+  return deals.map((d) => {
+    const primaryContactName = d.primary_contact
+      ? [d.primary_contact.first_name, d.primary_contact.last_name]
+          .filter(Boolean)
+          .join(" ")
+      : null
+    return {
+      id: d.id,
+      title: d.title,
+      companyName: d.company?.name ?? null,
+      stage: d.stage as DealStage,
+      primaryContactName,
+      valueEur: d.value_eur,
+    }
+  })
 }
 
 export default async function TasksPage({
@@ -87,6 +112,7 @@ export default async function TasksPage({
   const parentOptions = buildParentOptions(
     deals.map((d) => ({ id: d.id, title: d.title }))
   )
+  const dealOptions = buildDealOptions(deals)
 
   const counts = {
     today: stats.dueToday,
@@ -104,7 +130,10 @@ export default async function TasksPage({
             Was als nächstes ansteht.
           </p>
         </div>
-        <AddTaskButton parentOptions={parentOptions} />
+        <AddTaskButton
+          parentOptions={parentOptions}
+          dealOptions={dealOptions}
+        />
       </header>
 
       <TasksTabs initial={activeTab} counts={counts} />
@@ -128,6 +157,7 @@ export default async function TasksPage({
               key={task.id}
               task={task}
               parentOptions={parentOptions}
+              dealOptions={dealOptions}
               showParentHint
               dealContext={
                 task.deal_id ? dealContexts.get(task.deal_id) ?? null : null

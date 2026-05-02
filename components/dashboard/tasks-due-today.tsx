@@ -4,6 +4,7 @@ import Link from "next/link"
 import { AlertTriangle } from "lucide-react"
 
 import { TaskRow } from "@/components/tasks/task-row"
+import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
 import type { TaskParentOption } from "@/components/tasks/task-form"
 import type { Task, TaskDealContext } from "@/lib/db/tasks"
 
@@ -14,11 +15,13 @@ export function DashboardTasksDueToday({
   today,
   overdue,
   parentOptions,
+  dealOptions,
   dealContexts,
 }: {
   today: Task[]
   overdue: Task[]
   parentOptions: TaskParentOption[]
+  dealOptions: PipelineDealOption[]
   dealContexts: Map<string, TaskDealContext>
 }) {
   // Hide the whole section when there's nothing actionable. Recruiters
@@ -74,6 +77,7 @@ export function DashboardTasksDueToday({
               key={task.id}
               task={task}
               parentOptions={parentOptions}
+              dealOptions={dealOptions}
               showParentHint
               dealContext={
                 task.deal_id ? dealContexts.get(task.deal_id) ?? null : null

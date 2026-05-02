@@ -12,6 +12,11 @@ import {
   updateTaskAction,
   type TaskActionInput,
 } from "@/app/(app)/_actions/tasks"
+import { DealCombobox } from "@/components/shared/deal-combobox"
+import {
+  PipelinePickerModal,
+  type PipelineDealOption,
+} from "@/components/tasks/pipeline-picker-modal"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import {
@@ -43,13 +48,16 @@ import {
 
 type Mode = { mode: "create" } | { mode: "edit"; task: Task }
 
-// Parent picker option. The form picker is a single Select; each option
-// holds an "encoded" string `${type}:${id}` (or the standalone sentinel)
-// so the Select can roundtrip a single value.
+// Parent picker option. Lightweight shape used for the encoded
+// "deal:<uuid>" / standalone-sentinel roundtrip. Phase 24.8 introduced
+// the richer `dealOptions` prop (DealOption / PipelineDealOption) for
+// the searchable combobox + modal — `parentOptions` is now mainly used
+// by TaskRow's ParentHint as a fallback label resolver. New callers
+// should prefer `dealOptions` directly.
 export type TaskParentOption = {
-  // The encoded string used as the SelectItem value.
+  // The encoded string used as the form value.
   value: string
-  // What the user sees in the trigger and the listbox.
+  // What the user sees as a label.
   label: string
   // Resolved back into a TaskParent for the action call.
   parent: TaskParent
@@ -73,8 +81,13 @@ type Props = Mode & {
   // Fixed-parent mode: detail-page Add Task uses this. The picker is
   // hidden, the parent is implicit.
   fixedParent?: TaskParent
-  // Free-parent mode: /tasks Add Task uses this. The picker shows
-  // every option (standalone + each Deal / Contact / Company).
+  // Free-parent mode: every Add/Edit Task entry point passes this so
+  // the combobox + Pipeline modal can render real deal labels (title,
+  // company, primary contact, value). Phase 24.8 replaced the flat
+  // Select that previously used `parentOptions`.
+  dealOptions?: PipelineDealOption[]
+  // Legacy thin catalog kept for TaskRow's ParentHint fallback. Pages
+  // that already pass dealOptions can omit this.
   parentOptions?: TaskParentOption[]
   // Display-only context shown below the parent picker (or in its
   // place when fixedParent is set). Optional — /tasks doesn't pass
@@ -146,6 +159,9 @@ export function TaskForm(props: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [submitting, setSubmitting] = useState(false)
+  // Pipeline modal lives alongside the combobox — opened from the
+  // combobox footer ("Pipeline-Ansicht öffnen"), closed on selection.
+  const [pipelinePickerOpen, setPipelinePickerOpen] = useState(false)
 
   // Create-mode default: due_date prefills to today. Most tasks people
   // add are for "right now" or "today" — a smart prefill saves a click
@@ -336,55 +352,64 @@ export function TaskForm(props: Props) {
           <FormField
             control={form.control}
             name="parent_value"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Verknüpft mit</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
+            render={({ field }) => {
+              // The combobox roundtrips dealId | null. Translate to the
+              // form's encoded `parent_value` shape on the way in/out.
+              const dealId =
+                field.value && field.value !== TASK_PARENT_NONE
+                  ? field.value.startsWith("deal:")
+                    ? field.value.slice("deal:".length)
+                    : null
+                  : null
+
+              const handleDealChange = (next: string | null): void => {
+                field.onChange(next ? `deal:${next}` : TASK_PARENT_NONE)
+              }
+
+              return (
+                <FormItem>
+                  <FormLabel>Verknüpft mit</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue>
-                        {/* Resolve the encoded "type:id" / standalone
-                            sentinel back to a readable label. Without
-                            this children fn, Base UI's SelectValue would
-                            render the raw value (a UUID or "__standalone__")
-                            in the trigger. Same fix as the source-dropdown
-                            and contact-filter sentinel leaks. */}
-                        {(v: string | null) => {
-                          if (v === null || v === TASK_PARENT_NONE) {
-                            return (
-                              <span className="italic text-muted-foreground">
-                                Keine Verknüpfung
-                              </span>
-                            )
-                          }
-                          const opt = (props.parentOptions ?? []).find(
-                            (o) => o.value === v
-                          )
-                          return opt?.label ?? v
-                        }}
-                      </SelectValue>
-                    </SelectTrigger>
+                    <DealCombobox
+                      value={dealId}
+                      onChange={handleDealChange}
+                      deals={props.dealOptions ?? []}
+                      onOpenPipelineView={
+                        // Only offer the modal entry point if there are
+                        // enough deals that a visual scan makes sense.
+                        // Below the threshold the combobox itself is the
+                        // faster path.
+                        (props.dealOptions?.length ?? 0) >= 6
+                          ? () => setPipelinePickerOpen(true)
+                          : undefined
+                      }
+                    />
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value={TASK_PARENT_NONE}>
-                      <span className="italic text-muted-foreground">
-                        Keine Verknüpfung (persönliche Aufgabe)
-                      </span>
-                    </SelectItem>
-                    {(props.parentOptions ?? []).map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormDescription>
-                  Optional: hänge diese Aufgabe an einen Deal — oder lass
-                  sie eigenständig.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
+                  <FormDescription>
+                    Optional: hänge diese Aufgabe an einen Deal — oder
+                    lass sie eigenständig.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )
+            }}
+          />
+        )}
+
+        {/* Pipeline modal mounted alongside the combobox. Stays out of
+            the DOM until the user explicitly opens it; selecting a deal
+            flows back through the form's setValue. */}
+        {showParentPicker && props.dealOptions && (
+          <PipelinePickerModal
+            open={pipelinePickerOpen}
+            onOpenChange={setPipelinePickerOpen}
+            deals={props.dealOptions}
+            onSelect={(dealId) => {
+              form.setValue("parent_value", `deal:${dealId}`, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }}
           />
         )}
 
