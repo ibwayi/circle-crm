@@ -5,7 +5,7 @@ import { AlertTriangle } from "lucide-react"
 
 import { TaskRow } from "@/components/tasks/task-row"
 import type { TaskParentOption } from "@/components/tasks/task-form"
-import type { Task } from "@/lib/db/tasks"
+import type { Task, TaskDealContext } from "@/lib/db/tasks"
 
 const MAX_TODAY = 5
 const MAX_OVERDUE = 5
@@ -14,10 +14,12 @@ export function DashboardTasksDueToday({
   today,
   overdue,
   parentOptions,
+  dealContexts,
 }: {
   today: Task[]
   overdue: Task[]
   parentOptions: TaskParentOption[]
+  dealContexts: Map<string, TaskDealContext>
 }) {
   // Hide the whole section when there's nothing actionable. Recruiters
   // shouldn't land on a dashboard scolding them about an empty queue.
@@ -73,6 +75,9 @@ export function DashboardTasksDueToday({
               task={task}
               parentOptions={parentOptions}
               showParentHint
+              dealContext={
+                task.deal_id ? dealContexts.get(task.deal_id) ?? null : null
+              }
             />
           ))}
           {todayExtra > 0 && (

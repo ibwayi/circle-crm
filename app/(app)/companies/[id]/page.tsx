@@ -20,7 +20,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { getCompany } from "@/lib/db/companies"
 import { listNotesForCompany } from "@/lib/db/notes"
-import { listTasksForCompany } from "@/lib/db/tasks"
+import {
+  getTaskDealContexts,
+  listTasksForCompanyTransitive,
+} from "@/lib/db/tasks"
 import { createClient } from "@/lib/supabase/server"
 
 const eurFormatter = new Intl.NumberFormat("de-DE", {
@@ -52,8 +55,19 @@ export default async function CompanyDetailPage({
   const { company, contacts, deals } = result
   const [notes, tasks] = await Promise.all([
     listNotesForCompany(supabase, company.id),
-    listTasksForCompany(supabase, company.id),
+    listTasksForCompanyTransitive(supabase, company.id),
   ])
+  // Per-deal context map for the transitive listing. The company is
+  // implicit on this page (we ARE the company), so each row renders
+  // Deal + Hauptkontakt — Firma is hidden by zeroing the field.
+  const dealIds = tasks.map((t) => t.deal_id).filter((id): id is string => id !== null)
+  const rawContexts = await getTaskDealContexts(supabase, dealIds)
+  const dealContexts = new Map(
+    Array.from(rawContexts.entries()).map(([id, ctx]) => [
+      id,
+      { ...ctx, companyId: null, companyName: null },
+    ])
+  )
 
   return (
     <div className="space-y-6 p-6 md:p-8">
@@ -172,8 +186,12 @@ export default async function CompanyDetailPage({
       <DealsSection deals={deals} />
 
       <TasksSection
-        target={{ type: "company", companyId: company.id }}
+        target={{ type: "transitive-company", companyId: company.id }}
         initialTasks={tasks}
+        dealContexts={dealContexts}
+        readOnly
+        heading={`Aufgaben aus Deals (${tasks.length})`}
+        emptyMessage={`Keine offenen Aufgaben in den Deals von ${company.name}.`}
       />
 
       <NotesSection

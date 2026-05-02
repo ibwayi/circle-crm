@@ -6,6 +6,7 @@ import {
   completeTask,
   createTask,
   deleteTask,
+  getDealRevalidationTargets,
   getTask,
   uncompleteTask,
   updateTask,
@@ -14,6 +15,8 @@ import {
   type TaskPriority,
 } from "@/lib/db/tasks"
 import { createClient } from "@/lib/supabase/server"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import type { Database } from "@/types/database"
 
 // Caller-shape for create/update actions. The form encodes the parent as
 // a single string (see lib/validations/task.ts) and we decode here at
@@ -36,26 +39,31 @@ function errorMessage(e: unknown): string {
   return "Something went wrong. Please try again."
 }
 
-// Revalidate every page that might surface this task. Always /tasks and
-// /dashboard (both bucket and stat-card surfaces). Plus the parent
-// detail page if any.
-function revalidateForParent(parent: TaskParent): void {
+/**
+ * Revalidate every page that might surface this task: /tasks and
+ * /dashboard always; the deal page when there is one; AND — new in
+ * 24.7 — the deal's company page + the deal's primary-contact page,
+ * since both surface the task transitively now.
+ *
+ * Takes a Supabase client so we can resolve the deal's company / primary
+ * contact in a single query. Skipped for standalone tasks (no parent →
+ * no transitive surfaces).
+ */
+async function revalidateForParent(
+  client: SupabaseClient<Database>,
+  parent: TaskParent
+): Promise<void> {
   revalidatePath("/tasks")
   revalidatePath("/dashboard")
-  switch (parent.type) {
-    case "deal":
-      revalidatePath(`/deals/${parent.dealId}`)
-      break
-    case "contact":
-      revalidatePath(`/contacts/${parent.contactId}`)
-      break
-    case "company":
-      revalidatePath(`/companies/${parent.companyId}`)
-      break
-    case "standalone":
-      // Already revalidated /tasks + /dashboard.
-      break
-  }
+  if (parent.type === "standalone") return
+
+  revalidatePath(`/deals/${parent.dealId}`)
+  const { companyId, primaryContactId } = await getDealRevalidationTargets(
+    client,
+    parent.dealId
+  )
+  if (companyId) revalidatePath(`/companies/${companyId}`)
+  if (primaryContactId) revalidatePath(`/contacts/${primaryContactId}`)
 }
 
 function inputToCreate(input: TaskActionInput): CreateTaskInput {
@@ -84,7 +92,7 @@ export async function createTaskAction(
 
   try {
     const task = await createTask(supabase, user.id, inputToCreate(input))
-    revalidateForParent(input.parent)
+    await revalidateForParent(supabase, input.parent)
     return { ok: true, taskId: task.id }
   } catch (e) {
     return { ok: false, error: errorMessage(e) }
@@ -108,22 +116,19 @@ export async function updateTaskAction(
   try {
     // Look up the prior parent so we can revalidate the page the task
     // was MOVING AWAY FROM in addition to the new parent's page. Without
-    // this, a deal→contact reassignment would leave the old deal's
-    // detail page stale until the next refresh.
+    // this, a deal→standalone reassignment would leave the old deal's
+    // detail page (and its company / primary contact pages) stale until
+    // the next refresh.
     const previous = await getTask(supabase, id)
     const task = await updateTask(supabase, id, inputToCreate(input))
     if (previous) {
       const previousParent: TaskParent =
         previous.deal_id !== null
           ? { type: "deal", dealId: previous.deal_id }
-          : previous.contact_id !== null
-            ? { type: "contact", contactId: previous.contact_id }
-            : previous.company_id !== null
-              ? { type: "company", companyId: previous.company_id }
-              : { type: "standalone" }
-      revalidateForParent(previousParent)
+          : { type: "standalone" }
+      await revalidateForParent(supabase, previousParent)
     }
-    revalidateForParent(input.parent)
+    await revalidateForParent(supabase, input.parent)
     return { ok: true, taskId: task.id }
   } catch (e) {
     return { ok: false, error: errorMessage(e) }
@@ -141,7 +146,7 @@ export async function completeTaskAction(
 
   try {
     const task = await completeTask(supabase, id)
-    revalidateForParent(parentFromTask(task))
+    await revalidateForParent(supabase, parentFromTask(task))
     return { ok: true, taskId: task.id }
   } catch (e) {
     return { ok: false, error: errorMessage(e) }
@@ -159,7 +164,7 @@ export async function uncompleteTaskAction(
 
   try {
     const task = await uncompleteTask(supabase, id)
-    revalidateForParent(parentFromTask(task))
+    await revalidateForParent(supabase, parentFromTask(task))
     return { ok: true, taskId: task.id }
   } catch (e) {
     return { ok: false, error: errorMessage(e) }
@@ -181,7 +186,7 @@ export async function rescheduleTaskAction(
 
   try {
     const task = await updateTask(supabase, id, { dueDate })
-    revalidateForParent(parentFromTask(task))
+    await revalidateForParent(supabase, parentFromTask(task))
     return { ok: true, taskId: task.id }
   } catch (e) {
     return { ok: false, error: errorMessage(e) }
@@ -199,10 +204,10 @@ export async function deleteTaskAction(
 
   try {
     // Look up the parent before we delete so the right pages get a
-    // revalidate signal — once deleted, we can't reconstruct the FKs.
+    // revalidate signal — once deleted, we can't reconstruct the FK.
     const task = await getTask(supabase, id)
     await deleteTask(supabase, id)
-    if (task) revalidateForParent(parentFromTask(task))
+    if (task) await revalidateForParent(supabase, parentFromTask(task))
     else {
       revalidatePath("/tasks")
       revalidatePath("/dashboard")
@@ -213,18 +218,8 @@ export async function deleteTaskAction(
   }
 }
 
-// Translate a stored Task row's FK columns back into a TaskParent.
-// The DB CHECK guarantees at most one is set, so the order doesn't
-// matter — the first match wins.
-function parentFromTask(task: {
-  deal_id: string | null
-  contact_id: string | null
-  company_id: string | null
-}): TaskParent {
+// Translate a stored Task row's deal_id back into a TaskParent.
+function parentFromTask(task: { deal_id: string | null }): TaskParent {
   if (task.deal_id !== null) return { type: "deal", dealId: task.deal_id }
-  if (task.contact_id !== null)
-    return { type: "contact", contactId: task.contact_id }
-  if (task.company_id !== null)
-    return { type: "company", companyId: task.company_id }
   return { type: "standalone" }
 }

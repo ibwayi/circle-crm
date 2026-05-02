@@ -7,8 +7,8 @@ export type TaskPriorityValue = (typeof TASK_PRIORITIES)[number]
 // the submit boundary, same pattern as the other forms in the project.
 //
 // Parent picker shape — string-encoded so the <Select> can hold a
-// single value. The form decodes it into `{ type, ...id }` before
-// passing to the server action.
+// single value. The form decodes it into a `TaskParent` before passing
+// to the server action.
 export const TASK_PARENT_NONE = "__standalone__"
 
 export const taskSchema = z.object({
@@ -19,10 +19,10 @@ export const taskSchema = z.object({
   // Postgres time — HH:mm or empty (HTML5 <input type="time"> emits HH:mm).
   due_time: z.string(),
   priority: z.enum(TASK_PRIORITIES),
-  // Parent encoded as "type:id" or the standalone sentinel. Decoded by
-  // the form's submit handler. The "deal:<uuid>" / "contact:<uuid>" /
-  // "company:<uuid>" / "__standalone__" shape lets the picker sit in a
-  // single Select.
+  // Parent encoded as "deal:<uuid>" or the standalone sentinel. Decoded
+  // by the form's submit handler. Phase 24.7 dropped contact / company
+  // parents — they're surfaced transitively now (Deal → Company +
+  // Primary Contact) rather than as separate selectable parents.
   parent_value: z.string(),
 })
 

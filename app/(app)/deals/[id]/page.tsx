@@ -235,6 +235,7 @@ export default async function DealDetailPage({
                   .join(" ")
               : undefined,
         }}
+        heading="Aufgaben"
       />
 
       <NotesSection

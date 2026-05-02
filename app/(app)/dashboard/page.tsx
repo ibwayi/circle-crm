@@ -18,6 +18,7 @@ import { listCompanies } from "@/lib/db/companies"
 import { listContacts } from "@/lib/db/contacts"
 import { getDealStats, getRecentDealActivity, listDeals } from "@/lib/db/deals"
 import {
+  getTaskDealContexts,
   getTaskStats,
   listOverdueTasks,
   listTasksDueToday,
@@ -89,29 +90,21 @@ export default async function DashboardPage() {
     company_name: c.company?.name ?? null,
   }))
 
-  // Parent-options catalog for the task rows' edit dialog. Same shape
-  // /tasks builds — kept inline here to avoid pulling another shared
-  // helper just for this one dashboard wiring.
-  const parentOptions: TaskParentOption[] = [
-    ...deals.map((d) => ({
-      value: `deal:${d.id}`,
-      label: `Deal: ${d.title}`,
-      parent: { type: "deal" as const, dealId: d.id },
-    })),
-    ...contactsFull.map((c) => {
-      const name = [c.first_name, c.last_name].filter(Boolean).join(" ")
-      return {
-        value: `contact:${c.id}`,
-        label: `Kontakt: ${name}`,
-        parent: { type: "contact" as const, contactId: c.id },
-      }
-    }),
-    ...companiesFull.map((co) => ({
-      value: `company:${co.id}`,
-      label: `Firma: ${co.name}`,
-      parent: { type: "company" as const, companyId: co.id },
-    })),
-  ]
+  // Parent-options catalog for the task rows' edit dialog. Phase 24.7:
+  // Deal-only — Standalone is the implicit sentinel inside TaskForm.
+  const parentOptions: TaskParentOption[] = deals.map((d) => ({
+    value: `deal:${d.id}`,
+    label: `Deal: ${d.title}`,
+    parent: { type: "deal" as const, dealId: d.id },
+  }))
+
+  // Per-deal transitive context for the visible task rows so each row
+  // can render Firma + Hauptkontakt alongside the deal hint. Limited to
+  // the deal_ids in {today, overdue} to keep the query tight.
+  const visibleDealIds = [...todayTasks, ...overdueTasks]
+    .map((t) => t.deal_id)
+    .filter((id): id is string => id !== null)
+  const dealContexts = await getTaskDealContexts(supabase, visibleDealIds)
 
   const pipelineSubtext =
     stats.activeCount === 0
@@ -200,6 +193,7 @@ export default async function DashboardPage() {
         today={todayTasks}
         overdue={overdueTasks}
         parentOptions={parentOptions}
+        dealContexts={dealContexts}
       />
 
       <DashboardRecentActivity deals={recentDeals} />

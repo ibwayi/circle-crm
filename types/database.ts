@@ -258,9 +258,7 @@ export type Database = {
       }
       tasks: {
         Row: {
-          company_id: string | null
           completed_at: string | null
-          contact_id: string | null
           created_at: string
           deal_id: string | null
           due_date: string | null
@@ -273,9 +271,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          company_id?: string | null
           completed_at?: string | null
-          contact_id?: string | null
           created_at?: string
           deal_id?: string | null
           due_date?: string | null
@@ -288,9 +284,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          company_id?: string | null
           completed_at?: string | null
-          contact_id?: string | null
           created_at?: string
           deal_id?: string | null
           due_date?: string | null
@@ -303,20 +297,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "tasks_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "tasks_deal_id_fkey"
             columns: ["deal_id"]

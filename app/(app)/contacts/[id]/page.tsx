@@ -20,7 +20,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { listCompanies } from "@/lib/db/companies"
 import { getContact } from "@/lib/db/contacts"
 import { listNotesForContact } from "@/lib/db/notes"
-import { listTasksForContact } from "@/lib/db/tasks"
+import {
+  getTaskDealContexts,
+  listTasksForContactTransitive,
+} from "@/lib/db/tasks"
 import { createClient } from "@/lib/supabase/server"
 
 const eurFormatter = new Intl.NumberFormat("de-DE", {
@@ -65,8 +68,19 @@ export default async function ContactDetailPage({
   const { contact, company, deals } = result
   const [notes, tasks] = await Promise.all([
     listNotesForContact(supabase, contact.id),
-    listTasksForContact(supabase, contact.id),
+    listTasksForContactTransitive(supabase, contact.id),
   ])
+  // Build the per-deal context map for the transitive task list. The
+  // contact is implicit (we ARE the contact), so the rows render Deal
+  // title + Firma — primary contact is hidden by zeroing the field.
+  const dealIds = tasks.map((t) => t.deal_id).filter((id): id is string => id !== null)
+  const rawContexts = await getTaskDealContexts(supabase, dealIds)
+  const dealContexts = new Map(
+    Array.from(rawContexts.entries()).map(([id, ctx]) => [
+      id,
+      { ...ctx, primaryContactId: null, primaryContactName: null },
+    ])
+  )
   const fullName = [contact.first_name, contact.last_name]
     .filter(Boolean)
     .join(" ")
@@ -190,13 +204,12 @@ export default async function ContactDetailPage({
       <DealsSection deals={deals} />
 
       <TasksSection
-        target={{ type: "contact", contactId: contact.id }}
+        target={{ type: "transitive-contact", contactId: contact.id }}
         initialTasks={tasks}
-        context={{
-          companyName: company?.name ?? undefined,
-          // No "primary contact" hint on a contact page — we ARE the
-          // contact. Skipped intentionally.
-        }}
+        dealContexts={dealContexts}
+        readOnly
+        heading={`Aufgaben aus verknüpften Deals (${tasks.length})`}
+        emptyMessage={`Keine offenen Aufgaben in den Deals von ${fullName}.`}
       />
 
       <NotesSection

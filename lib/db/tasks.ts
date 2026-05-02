@@ -12,16 +12,13 @@ export type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"]
 export type TaskPriority = "low" | "medium" | "high"
 
 /**
- * Discriminated union for a task's parent. Mirrors `NotesTarget` from the
- * actions layer but adds a fourth arm: `standalone` (no parent — a
- * personal todo). The DB-level CHECK from migration 0010 enforces
- * at-most-one of (deal_id, contact_id, company_id) is set; the union
- * catches the easy mistakes at compile time.
+ * A task either lives on a Deal or stands alone as a personal todo.
+ * Phase 24.7 collapsed the previous {deal, contact, company, standalone}
+ * union — the schema now has only `deal_id` and Company / Primary
+ * Contact context is surfaced transitively via `getTaskDealContexts`.
  */
 export type TaskParent =
   | { type: "deal"; dealId: string }
-  | { type: "contact"; contactId: string }
-  | { type: "company"; companyId: string }
   | { type: "standalone" }
 
 /**
@@ -50,6 +47,20 @@ export type TaskStats = {
   completed: number
 }
 
+/**
+ * Read-only context surfaced for a deal-task on /tasks, the dashboard,
+ * and the contact/company detail pages. Built once per page from the
+ * tasks' deal_ids via `getTaskDealContexts` and passed to TaskRow.
+ */
+export type TaskDealContext = {
+  dealId: string
+  dealTitle: string
+  companyId: string | null
+  companyName: string | null
+  primaryContactId: string | null
+  primaryContactName: string | null
+}
+
 // Today as `yyyy-MM-dd` in local time. Postgres `date` is timezone-naive,
 // so comparing against a local-time date string avoids the UTC-shift trap
 // the date picker docs spell out (a German user's "today" at 23:00 must
@@ -66,8 +77,6 @@ export async function listTasks(
     /** true → completed only; false → open only; undefined/null → both */
     completed?: boolean | null
     dealId?: string
-    contactId?: string
-    companyId?: string
   }
 ): Promise<Task[]> {
   let query = client.from("tasks").select("*")
@@ -84,8 +93,6 @@ export async function listTasks(
   // completed === null or undefined → no filter (both)
 
   if (opts?.dealId) query = query.eq("deal_id", opts.dealId)
-  if (opts?.contactId) query = query.eq("contact_id", opts.contactId)
-  if (opts?.companyId) query = query.eq("company_id", opts.companyId)
 
   // Sort: open first, then by due_date asc (NULLS LAST), then created_at desc.
   query = query
@@ -105,18 +112,66 @@ export async function listTasksForDeal(
   return listTasks(client, { dealId, completed: false })
 }
 
-export async function listTasksForContact(
-  client: Client,
-  contactId: string
-): Promise<Task[]> {
-  return listTasks(client, { contactId, completed: false })
-}
-
-export async function listTasksForCompany(
+/**
+ * Tasks attached to any deal that belongs to this company. Used on the
+ * Company detail page — the company itself can no longer be a task's
+ * parent (Phase 24.7), but tasks on the company's deals are surfaced
+ * transitively in a read-only list.
+ *
+ * Two round-trips: deal_ids first, then a single .in() query for tasks.
+ * Same shape as listDeals's contactId filter — Supabase JS doesn't
+ * support arbitrary subqueries, so the junction-then-main pattern is
+ * the minimum.
+ */
+export async function listTasksForCompanyTransitive(
   client: Client,
   companyId: string
 ): Promise<Task[]> {
-  return listTasks(client, { companyId, completed: false })
+  const { data: deals, error: dErr } = await client
+    .from("deals")
+    .select("id")
+    .eq("company_id", companyId)
+  if (dErr) throw dErr
+  const dealIds = (deals ?? []).map((d) => d.id)
+  if (dealIds.length === 0) return []
+
+  const { data, error } = await client
+    .from("tasks")
+    .select("*")
+    .is("completed_at", null)
+    .in("deal_id", dealIds)
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return data
+}
+
+/**
+ * Tasks attached to any deal that the contact participates in (via the
+ * deal_contacts junction). Used on the Contact detail page — same
+ * transitive-read-only model as `listTasksForCompanyTransitive`.
+ */
+export async function listTasksForContactTransitive(
+  client: Client,
+  contactId: string
+): Promise<Task[]> {
+  const { data: junctions, error: jErr } = await client
+    .from("deal_contacts")
+    .select("deal_id")
+    .eq("contact_id", contactId)
+  if (jErr) throw jErr
+  const dealIds = (junctions ?? []).map((j) => j.deal_id)
+  if (dealIds.length === 0) return []
+
+  const { data, error } = await client
+    .from("tasks")
+    .select("*")
+    .is("completed_at", null)
+    .in("deal_id", dealIds)
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return data
 }
 
 export async function listStandaloneTasks(client: Client): Promise<Task[]> {
@@ -124,8 +179,6 @@ export async function listStandaloneTasks(client: Client): Promise<Task[]> {
     .from("tasks")
     .select("*")
     .is("deal_id", null)
-    .is("contact_id", null)
-    .is("company_id", null)
     .is("completed_at", null)
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
@@ -202,33 +255,19 @@ export async function getTask(
 }
 
 /**
- * Translate a CreateTaskInput into a typed Insert row. Pulled out of
- * createTask so updateTask can reuse the parent-FK translation logic.
+ * Translate a CreateTaskInput into a typed Insert row. Shared between
+ * createTask (full insert) and updateTask (partial re-parent).
+ *
+ * The row type allows `string | null | undefined` because the generated
+ * Insert / Update types mark deal_id as optional (default NULL). We
+ * always assign explicitly so the standalone case overwrites a
+ * previously-set deal_id on update.
  */
 function applyParent(
-  row: { deal_id: string | null; contact_id: string | null; company_id: string | null },
+  row: { deal_id?: string | null },
   parent: TaskParent
 ): void {
-  // Always set all three columns so callers don't have to think about
-  // the "previous parent" they might be overwriting on update. The CHECK
-  // constraint enforces at-most-one.
-  row.deal_id = null
-  row.contact_id = null
-  row.company_id = null
-  switch (parent.type) {
-    case "deal":
-      row.deal_id = parent.dealId
-      break
-    case "contact":
-      row.contact_id = parent.contactId
-      break
-    case "company":
-      row.company_id = parent.companyId
-      break
-    case "standalone":
-      // All three already null.
-      break
-  }
+  row.deal_id = parent.type === "deal" ? parent.dealId : null
 }
 
 export async function createTask(
@@ -244,10 +283,8 @@ export async function createTask(
     due_time: input.dueTime ?? null,
     priority: input.priority ?? "medium",
     deal_id: null,
-    contact_id: null,
-    company_id: null,
   }
-  applyParent(insert as Required<typeof insert>, input.parent)
+  applyParent(insert, input.parent)
 
   const { data, error } = await client
     .from("tasks")
@@ -274,18 +311,9 @@ export async function updateTask(
   if (input.priority !== undefined) update.priority = input.priority
 
   if (input.parent !== undefined) {
-    // Re-parenting: set all three FK columns so the row never sits in a
-    // stale-parent state mid-update. Unsetting via "standalone" leaves
-    // all three null (caller's intent).
-    const parentSlot: { deal_id: string | null; contact_id: string | null; company_id: string | null } = {
-      deal_id: null,
-      contact_id: null,
-      company_id: null,
-    }
+    const parentSlot: { deal_id: string | null } = { deal_id: null }
     applyParent(parentSlot, input.parent)
     update.deal_id = parentSlot.deal_id
-    update.contact_id = parentSlot.contact_id
-    update.company_id = parentSlot.company_id
   }
 
   const { data, error } = await client
@@ -375,3 +403,94 @@ export async function getTaskStats(
   return stats
 }
 
+/**
+ * Batch-fetch the deal-side context (deal title, company, primary
+ * contact) for a set of task deal_ids. Returns a Map keyed by deal_id
+ * so pages can `contexts.get(task.deal_id)` per row in O(1).
+ *
+ * Single round-trip for the full set — primary-contact resolution
+ * happens in JS over the joined `deal_contacts` rows. Empty `dealIds`
+ * short-circuits to an empty map.
+ */
+export async function getTaskDealContexts(
+  client: Client,
+  dealIds: string[]
+): Promise<Map<string, TaskDealContext>> {
+  const map = new Map<string, TaskDealContext>()
+  if (dealIds.length === 0) return map
+
+  // Dedupe: the caller may pass overlapping IDs from /tasks's bucket
+  // queries, no point asking the DB twice for the same deal.
+  const unique = Array.from(new Set(dealIds))
+
+  const { data, error } = await client
+    .from("deals")
+    .select(
+      "id, title, company:companies(id, name), deal_contacts(is_primary, contact:contacts(id, first_name, last_name))"
+    )
+    .in("id", unique)
+  if (error) throw error
+
+  type Row = {
+    id: string
+    title: string
+    company: { id: string; name: string } | null
+    deal_contacts: Array<{
+      is_primary: boolean
+      contact: { id: string; first_name: string; last_name: string | null } | null
+    }>
+  }
+
+  for (const row of (data ?? []) as Row[]) {
+    const primary = row.deal_contacts.find((dc) => dc.is_primary)
+    const primaryContact = primary?.contact ?? null
+    const primaryContactName = primaryContact
+      ? [primaryContact.first_name, primaryContact.last_name]
+          .filter(Boolean)
+          .join(" ")
+      : null
+
+    map.set(row.id, {
+      dealId: row.id,
+      dealTitle: row.title,
+      companyId: row.company?.id ?? null,
+      companyName: row.company?.name ?? null,
+      primaryContactId: primaryContact?.id ?? null,
+      primaryContactName,
+    })
+  }
+
+  return map
+}
+
+/**
+ * Resolve the revalidation targets for a deal-task. Used by the server
+ * actions when a task is created / updated / deleted on a deal so the
+ * deal's company page and primary-contact page (which surface the task
+ * transitively) refresh too.
+ */
+export async function getDealRevalidationTargets(
+  client: Client,
+  dealId: string
+): Promise<{ companyId: string | null; primaryContactId: string | null }> {
+  const { data, error } = await client
+    .from("deals")
+    .select(
+      "company_id, deal_contacts(is_primary, contact_id)"
+    )
+    .eq("id", dealId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return { companyId: null, primaryContactId: null }
+
+  type Row = {
+    company_id: string | null
+    deal_contacts: Array<{ is_primary: boolean; contact_id: string }>
+  }
+  const row = data as Row
+  const primary = row.deal_contacts.find((dc) => dc.is_primary)
+  return {
+    companyId: row.company_id,
+    primaryContactId: primary?.contact_id ?? null,
+  }
+}

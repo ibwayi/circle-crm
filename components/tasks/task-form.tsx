@@ -101,13 +101,7 @@ const EMPTY_VALUES: TaskFormValues = {
 
 function taskToValues(task: Task): TaskFormValues {
   const parentValue =
-    task.deal_id !== null
-      ? `deal:${task.deal_id}`
-      : task.contact_id !== null
-        ? `contact:${task.contact_id}`
-        : task.company_id !== null
-          ? `company:${task.company_id}`
-          : TASK_PARENT_NONE
+    task.deal_id !== null ? `deal:${task.deal_id}` : TASK_PARENT_NONE
   return {
     title: task.title,
     notes: task.notes ?? "",
@@ -139,14 +133,12 @@ function decodeParent(
     const match = options.find((o) => o.value === value)
     if (match) return match.parent
   }
-  // Encoded "type:id" — decode directly when no option list is given.
+  // Encoded "deal:<uuid>" — decode directly when no option list is given.
   const sep = value.indexOf(":")
   if (sep < 0) return fallback
   const type = value.slice(0, sep)
   const id = value.slice(sep + 1)
   if (type === "deal") return { type: "deal", dealId: id }
-  if (type === "contact") return { type: "contact", contactId: id }
-  if (type === "company") return { type: "company", companyId: id }
   return fallback
 }
 
@@ -387,8 +379,8 @@ export function TaskForm(props: Props) {
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  Optional: hänge diese Aufgabe an einen Deal, Kontakt oder
-                  eine Firma — oder lass sie eigenständig.
+                  Optional: hänge diese Aufgabe an einen Deal — oder lass
+                  sie eigenständig.
                 </FormDescription>
                 <FormMessage />
               </FormItem>

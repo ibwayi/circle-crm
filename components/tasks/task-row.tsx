@@ -2,6 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
@@ -22,7 +23,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import type { Task } from "@/lib/db/tasks"
+import type { Task, TaskDealContext } from "@/lib/db/tasks"
 import { formatDueDate, type DueTone } from "@/lib/utils/dates"
 import { cn } from "@/lib/utils"
 
@@ -55,19 +56,30 @@ export function TaskRow({
   task,
   parentOptions,
   showParentHint,
+  dealContext,
+  readOnly = false,
 }: {
   task: Task
-  // Edit dialog needs the parent picker catalog when shown from /tasks.
-  // Detail-page TasksSection passes nothing — the picker still appears
-  // (so users can re-assign tasks to other entities) but lists only
-  // the standalone option until parentOptions is provided. Acceptable
-  // for the in-context detail-page path; full re-assignment flow lives
-  // in the /tasks dialog where the catalog IS passed.
+  // Edit dialog needs the catalog of selectable parents (now: each Deal
+  // + Standalone). /tasks and the dashboard pass the full catalog;
+  // detail-page rows omit it (the implicit parent is the page's entity).
   parentOptions?: TaskParentOption[]
-  // /tasks page sets this to render the "→ Deal: X" parent indicator
-  // below the title. Detail-page rows omit it (the parent is implicit
-  // from the page).
+  // Render the parent hint line under the title. /tasks and dashboard
+  // set this; detail-page rows leave it off because the parent is
+  // already visible above the list.
   showParentHint?: boolean
+  // Transitive deal context for this row. When provided AND the task
+  // has a deal_id, the hint expands from "→ Deal: X" to a small block
+  // with Firma + Hauptkontakt lines beneath. Pages decide whether to
+  // pass it (see app/(app)/tasks/page.tsx, dashboard/page.tsx, and the
+  // company / contact detail pages).
+  dealContext?: TaskDealContext | null
+  // Read-only mode for transitive listings (Contact / Company detail
+  // pages). Hides the Add-task affordance, the delete button, and the
+  // inline-reschedule popover. Checkbox toggle and title-click edit
+  // still work — they're the user's only way to act on a task surfaced
+  // via transitive context without navigating to its deal.
+  readOnly?: boolean
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -177,7 +189,11 @@ export function TaskRow({
             </p>
           )}
           {showParentHint && (
-            <ParentHint task={optimisticTask} parentOptions={parentOptions} />
+            <ParentHint
+              task={optimisticTask}
+              parentOptions={parentOptions}
+              dealContext={dealContext}
+            />
           )}
         </div>
 
@@ -191,10 +207,11 @@ export function TaskRow({
           >
             {PRIORITY_LABEL[optimisticTask.priority] ?? optimisticTask.priority}
           </Badge>
-          {isComplete ? (
-            // Completed tasks render the date as a read-only badge —
-            // rescheduling a done task isn't a coherent action; the
-            // user should uncomplete first.
+          {isComplete || readOnly ? (
+            // Completed tasks AND read-only rows render the date as a
+            // plain badge. Rescheduling a done task isn't a coherent
+            // action; rescheduling a transitive (read-only) task should
+            // happen on the deal's own page.
             <Badge
               variant="outline"
               className={cn("shrink-0 text-[11px]", dueClass)}
@@ -235,20 +252,22 @@ export function TaskRow({
               </PopoverContent>
             </Popover>
           )}
-          <button
-            type="button"
-            onClick={() => setDeleteOpen(true)}
-            aria-label="Aufgabe löschen"
-            title="Löschen"
-            className={cn(
-              "inline-flex h-7 w-7 items-center justify-center rounded-md transition-opacity",
-              "text-muted-foreground hover:bg-muted hover:text-destructive",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              "opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
-            )}
-          >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(true)}
+              aria-label="Aufgabe löschen"
+              title="Löschen"
+              className={cn(
+                "inline-flex h-7 w-7 items-center justify-center rounded-md transition-opacity",
+                "text-muted-foreground hover:bg-muted hover:text-destructive",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+              )}
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          )}
         </div>
       </article>
 
@@ -258,12 +277,14 @@ export function TaskRow({
         onOpenChange={setEditOpen}
         parentOptions={parentOptions}
       />
-      <DeleteTaskDialog
-        taskId={task.id}
-        taskTitle={task.title}
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-      />
+      {!readOnly && (
+        <DeleteTaskDialog
+          taskId={task.id}
+          taskTitle={task.title}
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+        />
+      )}
     </>
   )
 }
@@ -271,32 +292,72 @@ export function TaskRow({
 function ParentHint({
   task,
   parentOptions,
+  dealContext,
 }: {
   task: Task
   parentOptions?: TaskParentOption[]
+  dealContext?: TaskDealContext | null
 }) {
-  // When the page hands us its parent catalog we can render the full
-  // label ("→ Deal: Q3 Roadmap"). Without it, fall back to the type
-  // hint alone — useful even on detail pages where the parent is
-  // implicit but you might be looking at a sibling task list.
-  let key: string | null = null
-  let typeLabel = ""
-  if (task.deal_id) {
-    key = `deal:${task.deal_id}`
-    typeLabel = "Deal"
-  } else if (task.contact_id) {
-    key = `contact:${task.contact_id}`
-    typeLabel = "Kontakt"
-  } else if (task.company_id) {
-    key = `company:${task.company_id}`
-    typeLabel = "Firma"
+  // Standalone task — render an italic hint so the row visually parallels
+  // its deal-attached siblings on /tasks and the dashboard.
+  if (!task.deal_id) {
+    return (
+      <p className="mt-1 text-[11px] italic text-muted-foreground">
+        Persönliche Aufgabe
+      </p>
+    )
   }
 
-  if (!key) return null
+  // Resolve the deal title in this preference order: the rich
+  // `dealContext` (best — also gives us linkability + transitive lines),
+  // then the parentOptions catalog (label only), then a generic fallback.
+  const opt = parentOptions?.find((o) => o.value === `deal:${task.deal_id}`)
+  const dealTitle =
+    dealContext?.dealTitle ?? opt?.label?.replace(/^Deal:\s*/, "") ?? null
 
-  const opt = parentOptions?.find((o) => o.value === key)
-  const label = opt ? `→ ${opt.label}` : `→ ${typeLabel}`
   return (
-    <p className="mt-1 text-[11px] text-muted-foreground">{label}</p>
+    <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+      <p>
+        →{" "}
+        <Link
+          href={`/deals/${task.deal_id}`}
+          className="text-foreground underline-offset-4 hover:underline"
+        >
+          {dealTitle ? `Deal: ${dealTitle}` : "Deal"}
+        </Link>
+      </p>
+      {dealContext?.companyName && (
+        <p>
+          Firma:{" "}
+          {dealContext.companyId ? (
+            <Link
+              href={`/companies/${dealContext.companyId}`}
+              className="text-foreground underline-offset-4 hover:underline"
+            >
+              {dealContext.companyName}
+            </Link>
+          ) : (
+            <span className="text-foreground">{dealContext.companyName}</span>
+          )}
+        </p>
+      )}
+      {dealContext?.primaryContactName && (
+        <p>
+          Hauptkontakt:{" "}
+          {dealContext.primaryContactId ? (
+            <Link
+              href={`/contacts/${dealContext.primaryContactId}`}
+              className="text-foreground underline-offset-4 hover:underline"
+            >
+              {dealContext.primaryContactName}
+            </Link>
+          ) : (
+            <span className="text-foreground">
+              {dealContext.primaryContactName}
+            </span>
+          )}
+        </p>
+      )}
+    </div>
   )
 }

@@ -4,10 +4,9 @@ import { AddTaskButton } from "@/components/tasks/add-task-button"
 import type { TaskParentOption } from "@/components/tasks/task-form"
 import { TaskRow } from "@/components/tasks/task-row"
 import { TasksTabs, type TasksTab } from "@/components/tasks/tasks-tabs"
-import { listCompanies } from "@/lib/db/companies"
-import { listContacts } from "@/lib/db/contacts"
 import { listDeals } from "@/lib/db/deals"
 import {
+  getTaskDealContexts,
   getTaskStats,
   listCompletedTasks,
   listOverdueTasks,
@@ -39,34 +38,15 @@ const EMPTY_LABEL: Record<TasksTab, string> = {
 }
 
 function buildParentOptions(
-  deals: { id: string; title: string }[],
-  contacts: { id: string; first_name: string; last_name: string | null }[],
-  companies: { id: string; name: string }[]
+  deals: { id: string; title: string }[]
 ): TaskParentOption[] {
-  const options: TaskParentOption[] = []
-  for (const d of deals) {
-    options.push({
-      value: `deal:${d.id}`,
-      label: `Deal: ${d.title}`,
-      parent: { type: "deal", dealId: d.id },
-    })
-  }
-  for (const c of contacts) {
-    const name = [c.first_name, c.last_name].filter(Boolean).join(" ")
-    options.push({
-      value: `contact:${c.id}`,
-      label: `Kontakt: ${name}`,
-      parent: { type: "contact", contactId: c.id },
-    })
-  }
-  for (const co of companies) {
-    options.push({
-      value: `company:${co.id}`,
-      label: `Firma: ${co.name}`,
-      parent: { type: "company", companyId: co.id },
-    })
-  }
-  return options
+  // Phase 24.7: only Deal options remain. Standalone is the implicit
+  // sentinel rendered separately by TaskForm.
+  return deals.map((d) => ({
+    value: `deal:${d.id}`,
+    label: `Deal: ${d.title}`,
+    parent: { type: "deal", dealId: d.id },
+  }))
 }
 
 export default async function TasksPage({
@@ -90,22 +70,22 @@ export default async function TasksPage({
   //   * Stats for all four tab counters
   //   * Parent-options catalog for the Add Task / Edit Task pickers
   // Run them in parallel so the page renders in one round-trip.
-  const [tasks, stats, deals, contacts, companies] = await Promise.all([
+  const [tasks, stats, deals] = await Promise.all([
     fetchTabTasks(supabase, activeTab),
     getTaskStats(supabase, userId),
     listDeals(supabase),
-    listContacts(supabase),
-    listCompanies(supabase),
   ])
 
+  // Per-deal transitive context (Firma + Hauptkontakt) for every
+  // deal-task currently shown. Built from this tab's task set so we
+  // don't pay for deals the user can't see right now.
+  const visibleDealIds = tasks
+    .map((t) => t.deal_id)
+    .filter((id): id is string => id !== null)
+  const dealContexts = await getTaskDealContexts(supabase, visibleDealIds)
+
   const parentOptions = buildParentOptions(
-    deals.map((d) => ({ id: d.id, title: d.title })),
-    contacts.map((c) => ({
-      id: c.id,
-      first_name: c.first_name,
-      last_name: c.last_name,
-    })),
-    companies.map((co) => ({ id: co.id, name: co.name }))
+    deals.map((d) => ({ id: d.id, title: d.title }))
   )
 
   const counts = {
@@ -149,6 +129,9 @@ export default async function TasksPage({
               task={task}
               parentOptions={parentOptions}
               showParentHint
+              dealContext={
+                task.deal_id ? dealContexts.get(task.deal_id) ?? null : null
+              }
             />
           ))}
         </div>
