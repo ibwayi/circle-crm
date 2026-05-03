@@ -34,7 +34,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import type { DealStage, DealWithRelations } from "@/lib/db/deals"
 import { DEAL_SOURCES } from "@/lib/validations/deal"
-import { AlertCircle } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { AlertCircle, X } from "lucide-react"
 
 type TabValue = "all" | DealStage
 type View = "table" | "groups" | "kanban"
@@ -392,21 +393,36 @@ export function DealsList({
           />
         </div>
 
-        {/* Stale toggle. Single Toggle (not a 2-state ToggleGroup) — the
-            label is descriptive enough that an active/inactive state is
-            obvious; ToggleGroup would imply mutual exclusion with
-            something else. Pressed state is signalled via the base
-            UI's data-pressed → bg-muted treatment baked into the
-            Toggle variants. */}
+        {/* Stale toggle. Active state uses a destructive-tinted fill so
+            it reads as an "active filter chip" — the Toggle primitive's
+            default data-pressed → bg-muted was too subtle for a filter
+            row that already has muted Select/Combobox neighbours. The
+            X icon on the right doubles as a close-affordance hint;
+            clicking the toggle still toggles (the X isn't its own
+            button, just a visual cue). */}
         <Toggle
           pressed={initialStaleOnly}
           onPressedChange={handleStaleToggle}
           variant="outline"
-          aria-label="Nur vernachlässigte Deals anzeigen"
-          className="self-start sm:self-auto"
+          aria-label={
+            initialStaleOnly
+              ? "Filter 'nur vernachlässigt' entfernen"
+              : "Nur vernachlässigte Deals anzeigen"
+          }
+          className={cn(
+            "h-9 self-start sm:self-auto",
+            initialStaleOnly &&
+              "border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive data-pressed:bg-destructive/10 data-pressed:text-destructive"
+          )}
         >
           <AlertCircle className="h-4 w-4" aria-hidden="true" />
           <span>Nur vernachlässigt</span>
+          {initialStaleOnly && (
+            <X
+              className="h-3.5 w-3.5 opacity-70"
+              aria-hidden="true"
+            />
+          )}
         </Toggle>
       </div>
 
