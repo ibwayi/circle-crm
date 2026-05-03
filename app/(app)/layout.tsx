@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { CommandPalette } from "@/components/shared/command-palette"
 import { Sidebar } from "@/components/shared/sidebar"
 import { Topbar } from "@/components/shared/topbar"
 
@@ -34,6 +35,10 @@ export default async function AppLayout({
         <Topbar email={email} />
         <main className="min-w-0 flex-1 overflow-x-clip">{children}</main>
       </div>
+      {/* Global Cmd+K palette. Renders the dialog itself + the
+          window-level keyboard listener; topbar's kbd indicator
+          opens it via the shared useCommandPalette() hook. */}
+      <CommandPalette />
     </div>
   )
 }
