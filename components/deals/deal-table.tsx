@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
 import { de } from "date-fns/locale"
 
+import { StaleBadge } from "@/components/deals/stale-badge"
 import { StageBadge } from "@/components/deals/stage-badge"
 import {
   Table,
@@ -191,7 +192,16 @@ function DealRow({ deal }: { deal: DealWithRelations }) {
       onClick={handleRowClick}
       className="cursor-pointer hover:bg-muted/50"
     >
-      <TableCell className="font-medium">{deal.title}</TableCell>
+      <TableCell className="font-medium">
+        <div className="flex items-center gap-2">
+          <span className="truncate">{deal.title}</span>
+          {/* Inline next to the title rather than a new column — the
+              "Last updated" column already shows the relative time on
+              md+; the badge is the action signal that the date alone
+              doesn't surface. */}
+          <StaleBadge updatedAt={deal.updated_at} stage={deal.stage} />
+        </div>
+      </TableCell>
       <TableCell className="hidden text-muted-foreground sm:table-cell">
         {deal.company ? (
           <Link

@@ -1,3 +1,4 @@
+import { StaleBadge } from "@/components/deals/stale-badge"
 import { STAGE_CONFIG } from "@/components/deals/stage-badge"
 import type { DealStage, DealWithRelations } from "@/lib/db/deals"
 import { cn } from "@/lib/utils"
@@ -56,14 +57,24 @@ export function DealKanbanCard({
           </span>
         </div>
       )}
-      <p
-        className={cn(
-          "mt-2 text-xs tabular-nums",
-          deal.value_eur === null ? "text-muted-foreground" : "text-foreground"
-        )}
-      >
-        {formatEur(deal.value_eur)}
-      </p>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <p
+          className={cn(
+            "text-xs tabular-nums",
+            deal.value_eur === null ? "text-muted-foreground" : "text-foreground"
+          )}
+        >
+          {formatEur(deal.value_eur)}
+        </p>
+        {/* Compact form on the kanban card — column width is at a
+            premium and the icon + day-count tells the story; full
+            sentence lives in the title attribute. */}
+        <StaleBadge
+          updatedAt={deal.updated_at}
+          stage={deal.stage}
+          compact
+        />
+      </div>
     </div>
   )
 }
