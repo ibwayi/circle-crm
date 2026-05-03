@@ -53,6 +53,12 @@ export type DealStats = {
   wonThisMonthEur: number
   lostThisMonthCount: number
   lostThisMonthEur: number
+  // Phase 25: count of non-won/lost deals untouched for the default
+  // stale window (7 days). The dashboard surfaces this via the
+  // "Vernachlässigte Deals" section, not a stat card — kept here so a
+  // future card / Cmd+K result / weekly digest can re-use the number
+  // without re-querying.
+  staleDeals: number
   byStage: Record<string, number>
 }
 
@@ -87,6 +93,12 @@ export async function listDeals(
     // Free-text equality filter on the source column. The form constrains
     // values to DEAL_SOURCES so the filter only sees that vocabulary.
     source?: string
+    // Phase 25: when true, returns only deals that match the stale
+    // criteria (non-won/lost AND updated_at older than `staleThreshold`
+    // days, default 7). Combines with the other filters — a `staleOnly`
+    // request with a stage of "lead" returns only stale leads.
+    staleOnly?: boolean
+    staleThreshold?: number
   }
 ): Promise<DealWithRelations[]> {
   // Contact filter goes through the deal_contacts junction. Supabase JS
@@ -136,6 +148,16 @@ export async function listDeals(
   if (opts?.search && opts.search.trim().length > 0) {
     const term = escapeIlike(opts.search.trim())
     query = query.ilike("title", `%${term}%`)
+  }
+
+  if (opts?.staleOnly) {
+    const days = opts.staleThreshold ?? 7
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+    // Stale = open AND not touched in `days`. The not.in() form is the
+    // PostgREST way to exclude won/lost without losing the index. The
+    // cutoff is computed in ms — Postgres compares the timestamptz
+    // ISO strings lexicographically, which is correct for ISO format.
+    query = query.lt("updated_at", cutoff).not("stage", "in", "(won,lost)")
   }
 
   if (dealIdAllowList) {
@@ -406,7 +428,9 @@ export async function getDealStats(
   // (≤200 deals per user), this is faster and simpler than five
   // separate count() queries — fewer round-trips, single source of
   // truth for the month boundary.
-  let query = client.from("deals").select("stage, value_eur, closed_at")
+  let query = client
+    .from("deals")
+    .select("stage, value_eur, closed_at, updated_at")
   if (opts?.userId) {
     query = query.eq("user_id", opts.userId)
   }
@@ -423,6 +447,13 @@ export async function getDealStats(
     now.getMonth(),
     1
   ).toISOString()
+  // Phase 25: stale cutoff. Server-side stats use the default threshold
+  // — see useStaleThreshold for why client preference doesn't reach
+  // here in v1.
+  const STALE_DAYS = 7
+  const staleCutoff = new Date(
+    Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString()
 
   const stats: DealStats = {
     activeCount: 0,
@@ -431,6 +462,7 @@ export async function getDealStats(
     wonThisMonthEur: 0,
     lostThisMonthCount: 0,
     lostThisMonthEur: 0,
+    staleDeals: 0,
     byStage: {},
   }
 
@@ -440,6 +472,7 @@ export async function getDealStats(
     if (deal.stage !== "won" && deal.stage !== "lost") {
       stats.activeCount++
       if (deal.value_eur !== null) stats.activePipelineEur += deal.value_eur
+      if (deal.updated_at < staleCutoff) stats.staleDeals++
       continue
     }
 
@@ -456,6 +489,34 @@ export async function getDealStats(
   }
 
   return stats
+}
+
+/**
+ * Top-N most-stale deals (oldest `updated_at` first), excluding
+ * won/lost. Used by the Dashboard's "Vernachlässigte Deals" section.
+ *
+ * Default threshold = 7 days, default limit = 5. Reuses listDeals'
+ * full-relations select so each row carries company + primary contact
+ * for the dashboard row.
+ *
+ * Two-step: cap the count via a server-side filter, then sort
+ * client-side after JS post-processing — same shape as
+ * `getRecentDealActivity` but with an additional age filter and an
+ * inverted sort.
+ */
+export async function listStaleDeals(
+  client: Client,
+  opts?: { limit?: number; threshold?: number }
+): Promise<DealWithRelations[]> {
+  const limit = opts?.limit ?? 5
+  const all = await listDeals(client, {
+    staleOnly: true,
+    staleThreshold: opts?.threshold,
+  })
+  // Sort by oldest activity first so the dashboard surfaces the
+  // worst-neglected deals at the top of the list.
+  all.sort((a, b) => a.updated_at.localeCompare(b.updated_at))
+  return all.slice(0, limit)
 }
 
 // Recent activity for the dashboard: last N deals ordered by updated_at

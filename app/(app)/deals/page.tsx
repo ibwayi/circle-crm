@@ -59,6 +59,10 @@ function parseCompanyId(raw: string | undefined): string | null {
   return raw && raw.length > 0 ? raw : null
 }
 
+function parseStaleOnly(raw: string | undefined): boolean {
+  return raw === "true"
+}
+
 export default async function DealsPage({
   searchParams,
 }: {
@@ -69,6 +73,7 @@ export default async function DealsPage({
     company?: string
     sort?: string
     dir?: string
+    stale?: string
   }>
 }) {
   const params = await searchParams
@@ -78,6 +83,7 @@ export default async function DealsPage({
   const companyId = parseCompanyId(params.company)
   const sortField = parseSortField(params.sort)
   const sortDirection = parseSortDir(params.dir)
+  const staleOnly = parseStaleOnly(params.stale)
 
   const supabase = await createClient()
 
@@ -89,6 +95,7 @@ export default async function DealsPage({
       search,
       source,
       companyId: companyId ?? undefined,
+      staleOnly: staleOnly || undefined,
     }),
     listCompanies(supabase),
     listContacts(supabase),
@@ -99,7 +106,7 @@ export default async function DealsPage({
   // active the unfiltered list IS the filtered list — skip the duplicate
   // round-trip.
   const all =
-    stage || search || source || companyId
+    stage || search || source || companyId || staleOnly
       ? await listDeals(supabase)
       : filtered
 
@@ -143,6 +150,7 @@ export default async function DealsPage({
         initialSearch={search ?? ""}
         initialSource={source}
         initialCompanyId={companyId}
+        initialStaleOnly={staleOnly}
         sortField={sortField}
         sortDirection={sortDirection}
         companies={companies}

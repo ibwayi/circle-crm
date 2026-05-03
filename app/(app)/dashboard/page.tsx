@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { ArrowRight } from "lucide-react"
 
 import { DashboardRecentActivity } from "@/components/dashboard/recent-activity"
+import { DashboardStaleDeals } from "@/components/dashboard/stale-deals"
 import { DashboardTasksDueToday } from "@/components/dashboard/tasks-due-today"
 import { AddDealButton } from "@/components/deals/add-deal-button"
 import type { DealStage } from "@/components/deals/stage-badge"
@@ -18,7 +19,12 @@ import {
 } from "@/components/ui/card"
 import { listCompanies } from "@/lib/db/companies"
 import { listContacts } from "@/lib/db/contacts"
-import { getDealStats, getRecentDealActivity, listDeals } from "@/lib/db/deals"
+import {
+  getDealStats,
+  getRecentDealActivity,
+  listDeals,
+  listStaleDeals,
+} from "@/lib/db/deals"
 import {
   getTaskDealContexts,
   getTaskStats,
@@ -70,6 +76,7 @@ export default async function DashboardPage() {
     todayTasks,
     overdueTasks,
     deals,
+    staleDeals,
   ] = await Promise.all([
     getDealStats(supabase),
     getRecentDealActivity(supabase, { limit: 5 }),
@@ -79,6 +86,7 @@ export default async function DashboardPage() {
     listTasksDueToday(supabase),
     listOverdueTasks(supabase),
     listDeals(supabase),
+    listStaleDeals(supabase, { limit: 5 }),
   ])
 
   const companies = companiesFull.map((c) => ({ id: c.id, name: c.name }))
@@ -215,6 +223,11 @@ export default async function DashboardPage() {
         parentOptions={parentOptions}
         dealOptions={dealOptions}
         dealContexts={dealContexts}
+      />
+
+      <DashboardStaleDeals
+        deals={staleDeals}
+        totalCount={stats.staleDeals}
       />
 
       <DashboardRecentActivity deals={recentDeals} />

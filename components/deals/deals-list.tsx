@@ -22,6 +22,7 @@ import { CompanyCombobox } from "@/components/shared/company-combobox"
 import type { ContactOption } from "@/components/shared/contact-combobox"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Toggle } from "@/components/ui/toggle"
 import {
   Select,
   SelectContent,
@@ -33,6 +34,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import type { DealStage, DealWithRelations } from "@/lib/db/deals"
 import { DEAL_SOURCES } from "@/lib/validations/deal"
+import { AlertCircle } from "lucide-react"
 
 type TabValue = "all" | DealStage
 type View = "table" | "groups" | "kanban"
@@ -131,6 +133,7 @@ export function DealsList({
   initialSearch,
   initialSource,
   initialCompanyId,
+  initialStaleOnly,
   sortField,
   sortDirection,
   companies,
@@ -142,6 +145,7 @@ export function DealsList({
   initialSearch: string
   initialSource: string | undefined
   initialCompanyId: string | null
+  initialStaleOnly: boolean
   sortField: DealSortField
   sortDirection: SortDirection
   companies: { id: string; name: string }[]
@@ -172,6 +176,7 @@ export function DealsList({
       companyId?: string | null // null means "drop the filter"
       sort?: DealSortField
       dir?: SortDirection
+      staleOnly?: boolean
     }) => {
       const params = new URLSearchParams(searchParams.toString())
 
@@ -219,6 +224,14 @@ export function DealsList({
         }
       }
 
+      if (next.staleOnly !== undefined) {
+        if (next.staleOnly) {
+          params.set("stale", "true")
+        } else {
+          params.delete("stale")
+        }
+      }
+
       const qs = params.toString()
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     },
@@ -253,6 +266,7 @@ export function DealsList({
     params.delete("search")
     params.delete("source")
     params.delete("company")
+    params.delete("stale")
     const qs = params.toString()
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     setSearchInput("")
@@ -268,6 +282,10 @@ export function DealsList({
 
   function handleCompanyChange(next: string | null) {
     updateUrl({ companyId: next })
+  }
+
+  function handleStaleToggle(pressed: boolean) {
+    updateUrl({ staleOnly: pressed })
   }
 
   // Stage tabs make sense in Table view (narrow the rows). In Groups and
@@ -373,6 +391,23 @@ export function DealsList({
             noneLabel="Alle Firmen"
           />
         </div>
+
+        {/* Stale toggle. Single Toggle (not a 2-state ToggleGroup) — the
+            label is descriptive enough that an active/inactive state is
+            obvious; ToggleGroup would imply mutual exclusion with
+            something else. Pressed state is signalled via the base
+            UI's data-pressed → bg-muted treatment baked into the
+            Toggle variants. */}
+        <Toggle
+          pressed={initialStaleOnly}
+          onPressedChange={handleStaleToggle}
+          variant="outline"
+          aria-label="Nur vernachlässigte Deals anzeigen"
+          className="self-start sm:self-auto"
+        >
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
+          <span>Nur vernachlässigt</span>
+        </Toggle>
       </div>
 
       {deals.length === 0 ? (
