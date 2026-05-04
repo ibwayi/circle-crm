@@ -1,34 +1,37 @@
 import { cn } from "@/lib/utils"
 
 /**
- * Circle's wordmark glyph: a sans-serif "C" inscribed in a thin
- * outer ring. Both strokes use `currentColor` so the logo inherits
- * its colour from the parent — black on light, white on dark, no
- * theme-aware variants needed.
+ * Circle's wordmark glyph: a sans-serif "C" with a small filled
+ * circle ("dot") sitting in its mouth — visual wordplay for the name.
+ * Both shapes use `currentColor` so the logo inherits its colour
+ * from the parent (black on light, white on dark, no theme-aware
+ * variants needed).
  *
  * Geometry on a 32-unit viewBox:
- *   * Outer ring: cx=16, cy=16, r=14, stroke-width=1.75 — leaves
- *     0.875 units of breathing room outside the C arc.
- *   * Inner C: an arc from 105° to 255° around the same centre at
- *     r=8.5, stroke-width=3, round caps. The 150° sweep gives a
- *     comfortable mouth (≈ 6.6 units wide) without looking like an
- *     open semicircle.
+ *   * C arc: r=8.5 around (16, 16). Endpoints at (22, 10) and
+ *     (22, 22) — both on the right side of the circle, ~45° above /
+ *     below the horizontal-right radius. The arc traces the long way
+ *     around (large-arc-flag=1), making a 270° sweep that opens to
+ *     the right with a ~12-unit-tall mouth.
+ *   * Dot: filled circle at (24, 16), r=3. Sits visually centred
+ *     between the two arc tips, slightly OUTSIDE the C's right edge
+ *     so it reads as "the missing piece of the circle" rather than
+ *     a separate inner element.
+ *   * Phase 27 had an outer ring (r=14) that completed the negative
+ *     space; the dot now plays that role with more intent.
  *
- * Why arc-as-path, not a glyph: keeps the file dependency-free (no
- * font load required), and the stroke weight is independent of the
- * outer ring, which lets us read the C as the foreground element
- * even at favicon size.
+ * Stroke 3 with round caps gives the C enough weight to balance the
+ * filled dot at favicon scale (16-20px). Below that the dot may
+ * become a smudge — kept r=3 (not 2.5) for that reason.
  */
 export function Logo({
   className,
   size = 32,
-  strokeWidth = 1.75,
-  cStrokeWidth = 3,
+  strokeWidth = 3,
 }: {
   className?: string
   size?: number
   strokeWidth?: number
-  cStrokeWidth?: number
 }) {
   return (
     <svg
@@ -41,24 +44,14 @@ export function Logo({
       role="img"
       aria-label="Circle"
     >
-      <circle
-        cx="16"
-        cy="16"
-        r="14"
+      <path
+        d="M22 10 A 8.5 8.5 0 1 0 22 22"
         stroke="currentColor"
         strokeWidth={strokeWidth}
-      />
-      {/* C arc — start at angle 105° (upper-left), sweep CCW through
-          the left side to 255° (lower-left). Endpoints derived from
-          x = 16 + 8.5·cos θ, y = 16 − 8.5·sin θ (SVG y-axis flipped).
-          150° sweep → ≈ 6.6-unit mouth on the right. */}
-      <path
-        d="M13.8 7.79 A 8.5 8.5 0 1 0 13.8 24.21"
-        stroke="currentColor"
-        strokeWidth={cStrokeWidth}
         strokeLinecap="round"
         fill="none"
       />
+      <circle cx="24" cy="16" r="3" fill="currentColor" />
     </svg>
   )
 }

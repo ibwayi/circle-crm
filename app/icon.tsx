@@ -1,14 +1,14 @@
 import { ImageResponse } from "next/og"
 
-// Next 16 App Router icon convention — replaces app/favicon.ico for
-// the browser tab. ImageResponse rasterises the JSX to PNG via
-// Satori at request time, so the icon stays in sync with the Logo
-// component without a separate build step.
+// Next 16 App Router icon convention — replaces the placeholder
+// favicon for the browser tab. ImageResponse rasterises the JSX to
+// PNG via Satori at request time, so the icon stays in sync with the
+// Logo component without a separate build step.
 //
 // Hardcoded black-on-white because Satori doesn't see the page's
 // CSS variables — the favicon ignores theme. That's also what
-// browsers expect (a tab icon should be legible regardless of
-// what theme the page itself ends up in).
+// browsers expect (a tab icon should be legible regardless of the
+// page's theme).
 
 export const size = { width: 32, height: 32 }
 export const contentType = "image/png"
@@ -33,20 +33,14 @@ export default function Icon() {
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <circle
-            cx="16"
-            cy="16"
-            r="14"
-            stroke="black"
-            strokeWidth={1.75}
-          />
           <path
-            d="M13.8 7.79 A 8.5 8.5 0 1 0 13.8 24.21"
+            d="M22 10 A 8.5 8.5 0 1 0 22 22"
             stroke="black"
             strokeWidth={3}
             strokeLinecap="round"
             fill="none"
           />
+          <circle cx="24" cy="16" r="3" fill="black" />
         </svg>
       </div>
     ),
