@@ -122,23 +122,37 @@ export default async function DealsPage({
     listSavedViews(supabase, "deals"),
   ])
 
-  // Counts are computed off an unfiltered set so the tab counters reflect
-  // the full pipeline regardless of the active filter. When no filters are
-  // active the unfiltered list IS the filtered list — skip the duplicate
-  // round-trip.
-  const all =
-    stage || search || source || companyId || staleOnly
-      ? await listDeals(supabase)
-      : filtered
+  // Counts reflect the active non-stage filters (search, source,
+  // company, stale) so the tab chips match what the user can actually
+  // see. The stage filter itself is intentionally NOT applied to the
+  // count source — otherwise clicking "Lead" would show every other
+  // stage as 0, killing the "click chip to switch stage" affordance.
+  // Phase 29.6: previously the counts were computed off the
+  // unfiltered set, which contradicted the filtered list visually.
+  //
+  // When stage is the only filter, `filtered` IS the non-stage set
+  // (we'd be re-running the same query). Skip the duplicate fetch.
+  const allNonStage =
+    stage && (search || source || companyId || staleOnly)
+      ? await listDeals(supabase, {
+          search,
+          source,
+          companyId: companyId ?? undefined,
+          staleOnly: staleOnly || undefined,
+          staleThreshold,
+        })
+      : stage
+        ? await listDeals(supabase)
+        : filtered
 
   const counts: DealCounts = {
-    all: all.length,
-    lead: all.filter((d) => d.stage === "lead").length,
-    qualified: all.filter((d) => d.stage === "qualified").length,
-    proposal: all.filter((d) => d.stage === "proposal").length,
-    negotiation: all.filter((d) => d.stage === "negotiation").length,
-    won: all.filter((d) => d.stage === "won").length,
-    lost: all.filter((d) => d.stage === "lost").length,
+    all: allNonStage.length,
+    lead: allNonStage.filter((d) => d.stage === "lead").length,
+    qualified: allNonStage.filter((d) => d.stage === "qualified").length,
+    proposal: allNonStage.filter((d) => d.stage === "proposal").length,
+    negotiation: allNonStage.filter((d) => d.stage === "negotiation").length,
+    won: allNonStage.filter((d) => d.stage === "won").length,
+    lost: allNonStage.filter((d) => d.stage === "lost").length,
   }
 
   const companies = companiesFull.map((c) => ({ id: c.id, name: c.name }))
