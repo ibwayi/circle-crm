@@ -189,14 +189,18 @@ export function TaskRow({
           />
         )}
         {/* StatusPicker replaces the binary complete-checkbox from
-            Phase 24/29. Read-only mode keeps the same icon for
-            visual consistency but disables interaction so transitive
-            views can't accidentally cycle a task's state. */}
+            Phase 24/29. Stays interactive even in readOnly mode —
+            Phase 24.7's intent was that users CAN flip a task's
+            status from a transitive contact / company view (it's a
+            common workflow: "looking at a contact, mark their task
+            done"). readOnly only suppresses Add / Delete / Inline
+            reschedule (see TaskRow + TasksSection). Phase 29.5
+            initially locked the picker disabled here too — that was
+            the regression Phase 29.6 fixes. */}
         <div className="mt-0.5">
           <StatusPicker
             value={optimisticStatus}
             onChange={handleStatusChange}
-            disabled={readOnly}
           />
         </div>
         <div className="min-w-0 flex-1">
