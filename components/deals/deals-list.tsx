@@ -21,10 +21,12 @@ import {
 } from "@/components/deals/deal-table"
 import { CompanyCombobox } from "@/components/shared/company-combobox"
 import type { ContactOption } from "@/components/shared/contact-combobox"
+import { SavedViews } from "@/components/shared/saved-views"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Toggle } from "@/components/ui/toggle"
 import { useSelection } from "@/lib/hooks/use-selection"
+import type { SavedView } from "@/lib/db/saved-views"
 import {
   Select,
   SelectContent,
@@ -149,6 +151,7 @@ export function DealsList({
   companies,
   contacts,
   defaultView,
+  savedViews,
 }: {
   deals: DealWithRelations[]
   counts: DealCounts
@@ -166,6 +169,8 @@ export function DealsList({
   // — localStorage still wins on devices where the user has explicitly
   // chosen something different. Phase 28.
   defaultView: View
+  // Phase 29: server-fetched saved views for this entity.
+  savedViews: SavedView[]
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -451,6 +456,17 @@ export function DealsList({
             />
           )}
         </Toggle>
+
+        {/* Saved views — push to the right end of the filter row so
+            it reads as a separate concern from the active filter
+            controls. */}
+        <div className="ml-auto">
+          <SavedViews
+            entity="deals"
+            views={savedViews}
+            sortKeys={["sort", "dir"]}
+          />
+        </div>
       </div>
 
       {deals.length === 0 ? (

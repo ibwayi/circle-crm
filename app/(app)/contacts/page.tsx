@@ -4,8 +4,10 @@ import { AddContactButton } from "@/components/contacts/add-contact-button"
 import { CompanyFilter } from "@/components/contacts/company-filter"
 import { ContactsSearch } from "@/components/contacts/contacts-search"
 import { ContactList } from "@/components/contacts/contact-list"
+import { SavedViews } from "@/components/shared/saved-views"
 import { listCompanies } from "@/lib/db/companies"
 import { listContactsWithCounts } from "@/lib/db/contacts"
+import { listSavedViews } from "@/lib/db/saved-views"
 import { createClient } from "@/lib/supabase/server"
 
 // Tri-state company filter:
@@ -33,9 +35,10 @@ export default async function ContactsPage({
 
   // Fetch companies once for the filter dropdown + the Add dialog combobox
   // — children get them via prop drilling rather than re-fetching.
-  const [contacts, companiesFull] = await Promise.all([
+  const [contacts, companiesFull, savedViews] = await Promise.all([
     listContactsWithCounts(supabase, { search, companyId }),
     listCompanies(supabase),
+    listSavedViews(supabase, "contacts"),
   ])
   const companies = companiesFull.map((c) => ({ id: c.id, name: c.name }))
 
@@ -58,6 +61,9 @@ export default async function ContactsPage({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <ContactsSearch initialValue={search ?? ""} />
         <CompanyFilter initialValue={companyId} companies={companies} />
+        <div className="ml-auto">
+          <SavedViews entity="contacts" views={savedViews} />
+        </div>
       </div>
 
       {showWelcome ? (

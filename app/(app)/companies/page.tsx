@@ -3,7 +3,9 @@ import { Building2 } from "lucide-react"
 import { AddCompanyButton } from "@/components/companies/add-company-button"
 import { CompaniesSearch } from "@/components/companies/companies-search"
 import { CompanyList } from "@/components/companies/company-list"
+import { SavedViews } from "@/components/shared/saved-views"
 import { listCompaniesWithCounts } from "@/lib/db/companies"
+import { listSavedViews } from "@/lib/db/saved-views"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function CompaniesPage({
@@ -18,7 +20,10 @@ export default async function CompaniesPage({
   // via useAutoOpenFromQuery.
 
   const supabase = await createClient()
-  const companies = await listCompaniesWithCounts(supabase, { search })
+  const [companies, savedViews] = await Promise.all([
+    listCompaniesWithCounts(supabase, { search }),
+    listSavedViews(supabase, "companies"),
+  ])
 
   const isFiltered = Boolean(search)
   const showWelcome = companies.length === 0 && !isFiltered
@@ -36,7 +41,12 @@ export default async function CompaniesPage({
         <AddCompanyButton />
       </header>
 
-      <CompaniesSearch initialValue={search ?? ""} />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <CompaniesSearch initialValue={search ?? ""} />
+        <div className="ml-auto">
+          <SavedViews entity="companies" views={savedViews} />
+        </div>
+      </div>
 
       {showWelcome ? (
         <CompanyEmptyWelcome />

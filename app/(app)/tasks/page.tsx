@@ -1,11 +1,13 @@
 import { ListTodo } from "lucide-react"
 
+import { SavedViews } from "@/components/shared/saved-views"
 import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
 import { AddTaskButton } from "@/components/tasks/add-task-button"
 import type { TaskParentOption } from "@/components/tasks/task-form"
 import { TasksList } from "@/components/tasks/tasks-list"
 import { TasksTabs, type TasksTab } from "@/components/tasks/tasks-tabs"
 import { listDeals, type DealWithRelations } from "@/lib/db/deals"
+import { listSavedViews } from "@/lib/db/saved-views"
 import type { DealStage } from "@/components/deals/stage-badge"
 import {
   getTaskDealContexts,
@@ -96,11 +98,13 @@ export default async function TasksPage({
   //   * The active tab's task list
   //   * Stats for all four tab counters
   //   * Parent-options catalog for the Add Task / Edit Task pickers
+  //   * Saved views for the entity (Phase 29)
   // Run them in parallel so the page renders in one round-trip.
-  const [tasks, stats, deals] = await Promise.all([
+  const [tasks, stats, deals, savedViews] = await Promise.all([
     fetchTabTasks(supabase, activeTab),
     getTaskStats(supabase, userId),
     listDeals(supabase),
+    listSavedViews(supabase, "tasks"),
   ])
 
   // Per-deal transitive context (Firma + Hauptkontakt) for every
@@ -138,7 +142,10 @@ export default async function TasksPage({
         />
       </header>
 
-      <TasksTabs initial={activeTab} counts={counts} />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <TasksTabs initial={activeTab} counts={counts} />
+        <SavedViews entity="tasks" views={savedViews} />
+      </div>
 
       {tasks.length === 0 ? (
         <div className="flex min-h-[30vh] items-center justify-center rounded-lg border border-dashed border-border bg-card">

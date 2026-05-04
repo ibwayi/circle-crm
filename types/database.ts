@@ -256,6 +256,39 @@ export type Database = {
           },
         ]
       }
+      saved_views: {
+        Row: {
+          created_at: string
+          entity: string
+          filters: Json
+          id: string
+          name: string
+          sort: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity: string
+          filters?: Json
+          id?: string
+          name: string
+          sort?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity?: string
+          filters?: Json
+          id?: string
+          name?: string
+          sort?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           completed_at: string | null

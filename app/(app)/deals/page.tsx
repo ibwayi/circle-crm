@@ -8,6 +8,7 @@ import type { ContactOption } from "@/components/shared/contact-combobox"
 import { listCompanies } from "@/lib/db/companies"
 import { listContacts } from "@/lib/db/contacts"
 import { listDeals, type DealStage } from "@/lib/db/deals"
+import { listSavedViews } from "@/lib/db/saved-views"
 import {
   getUserPreferences,
   type DefaultDealView,
@@ -105,8 +106,9 @@ export default async function DealsPage({
   const staleThreshold = preferences?.stale_threshold_days ?? undefined
 
   // Add Deal dialog needs companies + contacts for its comboboxes;
-  // main list + filters parallel-fetch.
-  const [filtered, companiesFull, contactsFull] = await Promise.all([
+  // main list + filters parallel-fetch. Saved views fetched server-
+  // side so the dropdown appears populated on first paint.
+  const [filtered, companiesFull, contactsFull, savedViews] = await Promise.all([
     listDeals(supabase, {
       stage,
       search,
@@ -117,6 +119,7 @@ export default async function DealsPage({
     }),
     listCompanies(supabase),
     listContacts(supabase),
+    listSavedViews(supabase, "deals"),
   ])
 
   // Counts are computed off an unfiltered set so the tab counters reflect
@@ -174,6 +177,7 @@ export default async function DealsPage({
         companies={companies}
         contacts={contacts}
         defaultView={defaultView}
+        savedViews={savedViews}
       />
     </div>
   )
