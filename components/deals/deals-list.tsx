@@ -482,6 +482,12 @@ export function DealsList({
           sortField={sortField}
           sortDirection={sortDirection}
           onSortChange={handleSortChange}
+          selection={{
+            isSelected: selection.isSelected,
+            toggle: selection.toggle,
+            toggleAll: selection.toggleAll,
+            mode: selection.mode,
+          }}
         />
       ) : view === "kanban" ? (
         <DealKanban deals={deals} />
@@ -500,9 +506,10 @@ export function DealsList({
         />
       )}
 
-      {/* Bulk-action bar — only shown in Table view; switching views
-          preserves the selection but hides the bar. */}
-      {view === "table" && (
+      {/* Bulk-action bar — Table + Groups views share one selection
+          set, so the bar shows in both. Kanban hides it (drag-drop
+          conflict; planned for a later phase). */}
+      {(view === "table" || view === "groups") && (
         <DealBulkActions
           selectedIds={selection.selected}
           visibleDeals={deals}

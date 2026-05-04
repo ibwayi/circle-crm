@@ -86,11 +86,23 @@ export function DealGroupsView({
   sortField,
   sortDirection,
   onSortChange,
+  selection,
 }: {
   deals: DealWithRelations[]
   sortField: DealSortField
   sortDirection: SortDirection
   onSortChange: (field: DealSortField) => void
+  // Phase 29.5: shared selection across all stage groups so the
+  // single bulk-action bar (rendered by DealsList above) sees the
+  // total. The mode is derived per-group below — each group's
+  // header checkbox reflects only its own deals' selection state,
+  // even though the underlying Set is shared.
+  selection?: {
+    isSelected: (id: string) => boolean
+    toggle: (id: string) => void
+    toggleAll: () => void
+    mode: "none" | "some" | "all"
+  }
 }) {
   const collapsed = useSyncExternalStore(
     subscribeStorage,
@@ -185,6 +197,7 @@ export function DealGroupsView({
                     sortDirection={sortDirection}
                     onSortChange={onSortChange}
                     hideHeader
+                    selection={selection}
                   />
                 )}
               </div>
