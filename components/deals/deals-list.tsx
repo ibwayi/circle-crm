@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { PREFERENCES_CHANGED_EVENT } from "@/lib/constants"
 import type { DealStage, DealWithRelations } from "@/lib/db/deals"
 import { DEAL_SOURCES } from "@/lib/validations/deal"
 import { cn } from "@/lib/utils"
@@ -89,11 +90,17 @@ function readView(fallback: View): View {
 }
 
 function subscribeView(callback: () => void): () => void {
+  // PREFERENCES_CHANGED_EVENT fires after the profile form clears
+  // the matching localStorage key — the listener just needs to
+  // trigger a re-render so the cached snapshot is recomputed and
+  // falls through to the server-provided defaultView. Phase 29.
   window.addEventListener("storage", callback)
   window.addEventListener(VIEW_STORAGE_EVENT, callback)
+  window.addEventListener(PREFERENCES_CHANGED_EVENT, callback)
   return () => {
     window.removeEventListener("storage", callback)
     window.removeEventListener(VIEW_STORAGE_EVENT, callback)
+    window.removeEventListener(PREFERENCES_CHANGED_EVENT, callback)
   }
 }
 

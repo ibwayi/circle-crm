@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import {
+  PREFERENCE_STORAGE_KEYS,
+  PREFERENCES_CHANGED_EVENT,
+} from "@/lib/constants"
 import type {
   DefaultDealView,
   UserPreferences,
@@ -90,6 +94,23 @@ export function ProfileForm({
       toast.error("Speichern fehlgeschlagen", { description: result.error })
       return
     }
+
+    // Phase 29 fix: explicit save in /profile must override any
+    // stale per-device localStorage value. Clear the matching keys
+    // synchronously, then dispatch the event so any currently-mounted
+    // hooks re-read their snapshot. Pages visited later (e.g. /deals
+    // after navigation from /profile) will read empty localStorage and
+    // fall through to the freshly-saved server preference.
+    try {
+      for (const key of PREFERENCE_STORAGE_KEYS) {
+        window.localStorage.removeItem(key)
+      }
+    } catch {
+      // Ignore quota / privacy-mode errors — server preference is
+      // authoritative either way once localStorage is unreachable.
+    }
+    window.dispatchEvent(new Event(PREFERENCES_CHANGED_EVENT))
+
     toast.success("Profil aktualisiert")
     startTransition(() => {
       router.refresh()

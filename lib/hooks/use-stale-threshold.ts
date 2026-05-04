@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react"
 
+import { PREFERENCES_CHANGED_EVENT } from "@/lib/constants"
 import { STALE_THRESHOLD_DEFAULT_DAYS } from "@/lib/utils/stale"
 
 const STORAGE_KEY = "circle:stale-threshold"
@@ -52,11 +53,18 @@ function readThreshold(fallback: number): number {
 }
 
 function subscribeStorage(callback: () => void): () => void {
+  // PREFERENCES_CHANGED_EVENT fires after the profile form has
+  // already cleared the matching localStorage key — the listener
+  // only needs to trigger a re-render so the cached snapshot is
+  // recomputed from the (now empty) storage and falls back to the
+  // server-provided initialThreshold. Phase 29.
   window.addEventListener("storage", callback)
   window.addEventListener(STORAGE_EVENT, callback)
+  window.addEventListener(PREFERENCES_CHANGED_EVENT, callback)
   return () => {
     window.removeEventListener("storage", callback)
     window.removeEventListener(STORAGE_EVENT, callback)
+    window.removeEventListener(PREFERENCES_CHANGED_EVENT, callback)
   }
 }
 

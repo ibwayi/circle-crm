@@ -8,14 +8,16 @@ import { toast } from "sonner"
 import { updateUserPreferencesAction } from "@/app/(app)/_actions/user-preferences"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import {
+  AVATAR_ALLOWED_MIME,
+  AVATAR_MAX_SIZE_BYTES,
+  AVATAR_MAX_SIZE_LABEL,
+  type AvatarAllowedMime,
+} from "@/lib/constants"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
-const MAX_BYTES = 2 * 1024 * 1024
-const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"] as const
-type AllowedMime = (typeof ALLOWED_MIME)[number]
-
-const EXT_BY_MIME: Record<AllowedMime, string> = {
+const EXT_BY_MIME: Record<AvatarAllowedMime, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
@@ -61,15 +63,15 @@ export function AvatarUpload({
   const inputRef = useRef<HTMLInputElement>(null)
 
   async function handleFile(file: File): Promise<void> {
-    if (!ALLOWED_MIME.includes(file.type as AllowedMime)) {
+    if (!AVATAR_ALLOWED_MIME.includes(file.type as AvatarAllowedMime)) {
       toast.error("Bildformat nicht unterstützt", {
         description: "Bitte ein JPEG, PNG oder WebP wählen.",
       })
       return
     }
-    if (file.size > MAX_BYTES) {
+    if (file.size > AVATAR_MAX_SIZE_BYTES) {
       toast.error("Datei zu groß", {
-        description: "Maximal 2 MB.",
+        description: `Avatar muss kleiner als ${AVATAR_MAX_SIZE_LABEL} sein.`,
       })
       return
     }
@@ -77,7 +79,7 @@ export function AvatarUpload({
     setBusy(true)
     try {
       const supabase = createClient()
-      const ext = EXT_BY_MIME[file.type as AllowedMime]
+      const ext = EXT_BY_MIME[file.type as AvatarAllowedMime]
       const path = `${userId}/avatar.${ext}`
 
       // upsert: true so the same path replaces the previous avatar.
@@ -119,7 +121,7 @@ export function AvatarUpload({
       // Best-effort delete of all known extensions — we only ever
       // store one, but we don't track which ext is current in the DB,
       // so it's simplest to attempt all three.
-      const paths = ALLOWED_MIME.map(
+      const paths = AVATAR_ALLOWED_MIME.map(
         (m) => `${userId}/avatar.${EXT_BY_MIME[m]}`
       )
       await supabase.storage.from("avatars").remove(paths)
@@ -202,13 +204,15 @@ export function AvatarUpload({
               <span>
                 Klicken oder Bild hierher ziehen
               </span>
-              <span className="text-xs">JPEG, PNG, WebP — max. 2 MB</span>
+              <span className="text-xs">
+                JPEG, PNG, WebP — max. {AVATAR_MAX_SIZE_LABEL}
+              </span>
             </>
           )}
           <input
             ref={inputRef}
             type="file"
-            accept={ALLOWED_MIME.join(",")}
+            accept={AVATAR_ALLOWED_MIME.join(",")}
             onChange={handleInputChange}
             className="sr-only"
             disabled={busy}
