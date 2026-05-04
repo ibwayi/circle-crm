@@ -41,7 +41,9 @@ const dateOnly = (iso: string): string => iso.slice(0, 10)
 // after each batch insert.
 // -----------------------------------------------------------------------------
 
-type SeedCompany = Omit<CompanyInsert, "user_id"> & { key: string }
+type SeedCompany = Omit<CompanyInsert, "user_id" | "workspace_id"> & {
+  key: string
+}
 
 const COMPANIES: SeedCompany[] = [
   {
@@ -196,7 +198,10 @@ const COMPANIES: SeedCompany[] = [
   },
 ]
 
-type SeedContact = Omit<ContactInsert, "user_id" | "company_id"> & {
+type SeedContact = Omit<
+  ContactInsert,
+  "user_id" | "workspace_id" | "company_id"
+> & {
   key: string
   companyKey?: string
 }
@@ -514,7 +519,7 @@ const CONTACTS: SeedContact[] = [
 
 type SeedDeal = Omit<
   DealInsert,
-  "user_id" | "company_id" | "expected_close_date" | "closed_at"
+  "user_id" | "workspace_id" | "company_id" | "expected_close_date" | "closed_at"
 > & {
   key: string
   companyKey?: string
@@ -1051,19 +1056,48 @@ export async function seedDemoData(client: AdminClient): Promise<SeedResult> {
     throw new Error("DEMO_USER_ID is not set")
   }
 
-  // Wipe in reverse-FK order. Notes first (cascades from any parent type
-  // would also work, but explicit is clearer). Then deal_contacts (cascade-
-  // deleted by both deals and contacts deletions, but again explicit).
-  // Then deals, contacts, companies — each level depends only on lower
-  // levels at this point.
+  // Phase 31: every seeded row needs a workspace_id. The demo user
+  // owns exactly one workspace post-migration ("Demo Workspace");
+  // look it up once at the top of the seed run. If the workspace
+  // doesn't exist (signup trigger missed for the demo account), the
+  // seeder errors loudly rather than silently inserting unscoped
+  // rows that would fail the NOT NULL constraint anyway.
+  const { data: workspace, error: wErr } = await client
+    .from("workspaces")
+    .select("id")
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (wErr) {
+    throw new Error(`Failed to look up demo workspace: ${wErr.message}`)
+  }
+  if (!workspace) {
+    throw new Error(
+      `Demo user (${userId}) has no workspace. The signup trigger or 0017 backfill may have missed this account.`
+    )
+  }
+  const workspaceId = workspace.id
+
+  // Wipe by workspace_id rather than user_id. After Phase 31 a user
+  // can in principle have data in multiple workspaces (they could be
+  // a member of someone else's workspace too — for the demo account
+  // that's not expected, but scoping by workspace makes the wipe
+  // explicit about its target).
+  // Reverse-FK order: notes → deal_contacts → deals → contacts →
+  // companies. deal_contacts has no workspace_id; cascade from deals
+  // catches it. We still hit it explicitly so the wipe is observable
+  // table-by-table in error messages if something goes wrong.
   for (const table of [
     "notes",
-    "deal_contacts",
     "deals",
     "contacts",
     "companies",
   ] as const) {
-    const { error } = await client.from(table).delete().eq("user_id", userId)
+    const { error } = await client
+      .from(table)
+      .delete()
+      .eq("workspace_id", workspaceId)
     if (error) {
       throw new Error(`Failed to wipe ${table}: ${error.message}`)
     }
@@ -1074,7 +1108,7 @@ export async function seedDemoData(client: AdminClient): Promise<SeedResult> {
   const companyRows: CompanyInsert[] = COMPANIES.map((c) => {
     const { key: _key, ...rest } = c
     void _key
-    return { ...rest, user_id: userId }
+    return { ...rest, user_id: userId, workspace_id: workspaceId }
   })
   const { data: companyData, error: companyError } = await client
     .from("companies")
@@ -1103,7 +1137,12 @@ export async function seedDemoData(client: AdminClient): Promise<SeedResult> {
     if (companyKey && !company_id) {
       throw new Error(`Contact ${c.key} references missing company ${companyKey}`)
     }
-    return { ...rest, company_id, user_id: userId }
+    return {
+      ...rest,
+      company_id,
+      user_id: userId,
+      workspace_id: workspaceId,
+    }
   })
   const { data: contactData, error: contactError } = await client
     .from("contacts")
@@ -1153,6 +1192,7 @@ export async function seedDemoData(client: AdminClient): Promise<SeedResult> {
       ...rest,
       company_id,
       user_id: userId,
+      workspace_id: workspaceId,
       expected_close_date,
     }
   })
@@ -1244,7 +1284,12 @@ export async function seedDemoData(client: AdminClient): Promise<SeedResult> {
   // contact_id / deal_id; the CHECK constraint from 0009 enforces that.
   const noteRows: NoteInsert[] = NOTES.map((n): NoteInsert => {
     const created_at = ago(n.daysAgo * DAY)
-    const base = { user_id: userId, content: n.content, created_at }
+    const base = {
+      user_id: userId,
+      workspace_id: workspaceId,
+      content: n.content,
+      created_at,
+    }
     if (n.kind === "company") {
       const id = companyIdByKey.get(n.companyKey)
       if (!id) throw new Error(`Note refers to missing company ${n.companyKey}`)
