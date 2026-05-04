@@ -43,7 +43,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -267,7 +266,13 @@ export function SavedViews({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>Gespeicherte Ansichten</DropdownMenuLabel>
+            {/* Plain styled div for the heading — DropdownMenuLabel
+                wraps Base UI's Menu.GroupLabel which crashes (#31)
+                outside a Menu.Group. The user-menu uses the same
+                pattern for its "Signed in as" row. */}
+            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+              Gespeicherte Ansichten
+            </div>
             <DropdownMenuSeparator />
             {views.length === 0 ? (
               <div className="px-2 py-2 text-xs text-muted-foreground">
