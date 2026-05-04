@@ -77,13 +77,12 @@ function buildDealOptions(deals: DealWithRelations[]): PipelineDealOption[] {
 export default async function TasksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; new?: string }>
+  searchParams: Promise<{ tab?: string }>
 }) {
   const params = await searchParams
   const activeTab = parseTab(params.tab)
-  // Phase 26.5: Cmd+K's "Neue Aufgabe anlegen" lands here with ?new=true.
-  // AddTaskButton strips the param via history.replaceState on mount.
-  const autoOpenNew = params.new === "true"
+  // Cmd+K's `?new=true` is consumed client-side by AddTaskButton via
+  // useAutoOpenFromQuery.
 
   const supabase = await createClient()
   const {
@@ -136,7 +135,6 @@ export default async function TasksPage({
         <AddTaskButton
           parentOptions={parentOptions}
           dealOptions={dealOptions}
-          initialOpen={autoOpenNew}
         />
       </header>
 

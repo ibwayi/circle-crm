@@ -21,16 +21,13 @@ function parseCompanyParam(raw: string | undefined): string | null | undefined {
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; company?: string; new?: string }>
+  searchParams: Promise<{ search?: string; company?: string }>
 }) {
   const params = await searchParams
   const search = params.search?.trim() || undefined
   const companyId = parseCompanyParam(params.company)
-  // Phase 26.5: Cmd+K's "Neuen Kontakt anlegen" lands here with ?new=true.
-  // Forwarded only to the header AddContactButton — the empty-state
-  // instance keeps its default false so we don't open two dialogs when
-  // the list is empty AND auto-open is requested.
-  const autoOpenNew = params.new === "true"
+  // Cmd+K's `?new=true` is consumed client-side by AddContactButton
+  // via useAutoOpenFromQuery.
 
   const supabase = await createClient()
 
@@ -55,7 +52,7 @@ export default async function ContactsPage({
             People you&apos;re working with.
           </p>
         </div>
-        <AddContactButton companies={companies} initialOpen={autoOpenNew} />
+        <AddContactButton companies={companies} />
       </header>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

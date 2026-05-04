@@ -1,31 +1,20 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AddCompanyDialog } from "@/components/companies/add-company-dialog"
+import { useAutoOpenFromQuery } from "@/lib/hooks/use-auto-open-from-query"
 
 export function AddCompanyButton({
   variant = "default",
   size = "default",
-  initialOpen = false,
 }: {
   variant?: "default" | "outline" | "secondary"
   size?: "default" | "sm" | "lg"
-  // Phase 26.5: Cmd+K wires "Neue Firma anlegen" to /companies?new=true.
-  // Page forwards as initialOpen; mount effect strips the param via
-  // history.replaceState so a reload doesn't re-open the dialog.
-  initialOpen?: boolean
 }) {
-  const [open, setOpen] = useState(initialOpen)
-
-  useEffect(() => {
-    if (!initialOpen) return
-    if (typeof window === "undefined") return
-    const url = new URL(window.location.href)
-    url.searchParams.delete("new")
-    window.history.replaceState(null, "", url.toString())
-  }, [initialOpen])
+  // See lib/hooks/use-auto-open-from-query — Cmd+K wires
+  // /companies?new=true here for cross-route AND same-route nav.
+  const { open, setOpen } = useAutoOpenFromQuery("new")
 
   return (
     <>
