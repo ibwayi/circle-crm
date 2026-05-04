@@ -4,11 +4,20 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-export type TasksTab = "today" | "overdue" | "upcoming" | "completed"
+export type TasksTab =
+  | "today"
+  | "overdue"
+  | "in_progress"
+  | "upcoming"
+  | "completed"
 
+// Phase 29.5: 5 buckets. Order roughly follows urgency — today's
+// open tasks first, then overdue, then in-progress (active work),
+// then future open tasks, then the completed archive.
 const TABS: { value: TasksTab; label: string }[] = [
   { value: "today", label: "Heute" },
   { value: "overdue", label: "Überfällig" },
+  { value: "in_progress", label: "In Bearbeitung" },
   { value: "upcoming", label: "Demnächst" },
   { value: "completed", label: "Erledigt" },
 ]

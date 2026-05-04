@@ -12,6 +12,25 @@ export type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"]
 export type TaskPriority = "low" | "medium" | "high"
 
 /**
+ * 3-state task status (Phase 29.5). The DB stores this as a CHECK-
+ * constrained text column; the TypeScript union here keeps callers
+ * honest at compile time. `completed_at` is still set/cleared
+ * automatically by `setTaskStatus` so date-based queries continue
+ * to work — status is the source of truth, completed_at is metadata.
+ */
+export type TaskStatus = "open" | "in_progress" | "completed"
+
+export const TASK_STATUSES: readonly TaskStatus[] = [
+  "open",
+  "in_progress",
+  "completed",
+] as const
+
+export function isTaskStatus(s: string): s is TaskStatus {
+  return s === "open" || s === "in_progress" || s === "completed"
+}
+
+/**
  * A task either lives on a Deal or stands alone as a personal todo.
  * Phase 24.7 collapsed the previous {deal, contact, company, standalone}
  * union — the schema now has only `deal_id` and Company / Primary
@@ -43,6 +62,7 @@ export type CreateTaskInput = {
 export type TaskStats = {
   dueToday: number
   overdue: number
+  inProgress: number
   upcoming: number
   completed: number
 }
@@ -85,12 +105,16 @@ export async function listTasks(
     query = query.lte("due_date", opts.dueBy)
   }
 
+  // Phase 29.5: `completed` semantically means "is this task done?"
+  // and now maps onto status — true → status='completed', false →
+  // status IN ('open', 'in_progress'). Callers that want only
+  // in_progress pass the new `inProgress: true` instead.
   if (opts?.completed === true) {
-    query = query.not("completed_at", "is", null)
+    query = query.eq("status", "completed")
   } else if (opts?.completed === false) {
-    query = query.is("completed_at", null)
+    query = query.in("status", ["open", "in_progress"])
   }
-  // completed === null or undefined → no filter (both)
+  // completed === null or undefined → no filter (all three statuses)
 
   if (opts?.dealId) query = query.eq("deal_id", opts.dealId)
 
@@ -138,7 +162,7 @@ export async function listTasksForCompanyTransitive(
   const { data, error } = await client
     .from("tasks")
     .select("*")
-    .is("completed_at", null)
+    .in("status", ["open", "in_progress"])
     .in("deal_id", dealIds)
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
@@ -166,7 +190,7 @@ export async function listTasksForContactTransitive(
   const { data, error } = await client
     .from("tasks")
     .select("*")
-    .is("completed_at", null)
+    .in("status", ["open", "in_progress"])
     .in("deal_id", dealIds)
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
@@ -179,7 +203,7 @@ export async function listStandaloneTasks(client: Client): Promise<Task[]> {
     .from("tasks")
     .select("*")
     .is("deal_id", null)
-    .is("completed_at", null)
+    .in("status", ["open", "in_progress"])
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
   if (error) throw error
@@ -190,12 +214,23 @@ export async function listStandaloneTasks(client: Client): Promise<Task[]> {
 // Each is a thin wrapper over .from("tasks") — kept here (not inline in
 // pages) per the WORKFLOW rule that all DB calls live in lib/db.
 
+// Phase 29.5: bucket queries filter on status. The 5 tabs partition
+// the user's tasks without overlap:
+//   * Heute        → status='open' AND due_date=today
+//   * Überfällig   → status='open' AND due_date<today
+//   * In Bearbeitung → status='in_progress' (regardless of due_date)
+//   * Demnächst    → status='open' AND (due_date>today OR due_date IS NULL)
+//   * Erledigt     → status='completed'
+// An in_progress task with due_date=today shows ONLY in "In
+// Bearbeitung" — moving it there is the user's signal that they're
+// actively on it; the date no longer drives where it lives.
+
 export async function listTasksDueToday(client: Client): Promise<Task[]> {
   const today = todayIso()
   const { data, error } = await client
     .from("tasks")
     .select("*")
-    .is("completed_at", null)
+    .eq("status", "open")
     .eq("due_date", today)
     .order("due_time", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
@@ -208,9 +243,24 @@ export async function listOverdueTasks(client: Client): Promise<Task[]> {
   const { data, error } = await client
     .from("tasks")
     .select("*")
-    .is("completed_at", null)
+    .eq("status", "open")
     .lt("due_date", today)
     .order("due_date", { ascending: true })
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function listInProgressTasks(client: Client): Promise<Task[]> {
+  // No date filter — once a task is in_progress, the user has chosen
+  // to actively work on it; the bucket follows the status, not the
+  // calendar. Sort by due_date so the most-urgent in-progress work
+  // floats to the top.
+  const { data, error } = await client
+    .from("tasks")
+    .select("*")
+    .eq("status", "in_progress")
+    .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
   if (error) throw error
   return data
@@ -223,7 +273,7 @@ export async function listUpcomingTasks(client: Client): Promise<Task[]> {
   const { data, error } = await client
     .from("tasks")
     .select("*")
-    .is("completed_at", null)
+    .eq("status", "open")
     .or(`due_date.gt.${today},due_date.is.null`)
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
@@ -235,7 +285,7 @@ export async function listCompletedTasks(client: Client): Promise<Task[]> {
   const { data, error } = await client
     .from("tasks")
     .select("*")
-    .not("completed_at", "is", null)
+    .eq("status", "completed")
     .order("completed_at", { ascending: false })
   if (error) throw error
   return data
@@ -326,13 +376,27 @@ export async function updateTask(
   return data
 }
 
-export async function completeTask(
+/**
+ * Update a task's status. Source of truth is the `status` column;
+ * this helper also keeps `completed_at` in sync for legacy queries
+ * + the eventual activity timeline:
+ *   * status='completed' → completed_at=now()
+ *   * status='open' or 'in_progress' → completed_at=null
+ *
+ * Single-update so the two columns can never drift. Phase 29.5.
+ */
+export async function setTaskStatus(
   client: Client,
-  id: string
+  id: string,
+  status: TaskStatus
 ): Promise<Task> {
+  const update: TaskUpdate = {
+    status,
+    completed_at: status === "completed" ? new Date().toISOString() : null,
+  }
   const { data, error } = await client
     .from("tasks")
-    .update({ completed_at: new Date().toISOString() })
+    .update(update)
     .eq("id", id)
     .select()
     .single()
@@ -340,18 +404,20 @@ export async function completeTask(
   return data
 }
 
+// Back-compat wrappers — kept so callers that just want "mark this
+// done / undone" don't have to import the full TaskStatus union.
+export async function completeTask(
+  client: Client,
+  id: string
+): Promise<Task> {
+  return setTaskStatus(client, id, "completed")
+}
+
 export async function uncompleteTask(
   client: Client,
   id: string
 ): Promise<Task> {
-  const { data, error } = await client
-    .from("tasks")
-    .update({ completed_at: null })
-    .eq("id", id)
-    .select()
-    .single()
-  if (error) throw error
-  return data
+  return setTaskStatus(client, id, "open")
 }
 
 export async function deleteTask(client: Client, id: string): Promise<void> {
@@ -364,12 +430,16 @@ export async function getTaskStats(
   userId: string
 ): Promise<TaskStats> {
   // Single query + JS aggregation, mirroring getDealStats. At portfolio
-  // scale (≤200 tasks per user) this is faster + simpler than four
+  // scale (≤200 tasks per user) this is faster + simpler than five
   // parallel COUNT queries — fewer round-trips, single read of "today",
   // and the aggregation logic stays in one readable place.
+  //
+  // Phase 29.5: status partitions the rows into 5 buckets. The
+  // bucketing here matches the bucket queries above so /tasks tabs
+  // and the dashboard counter agree.
   const { data, error } = await client
     .from("tasks")
-    .select("due_date, completed_at")
+    .select("due_date, status")
     .eq("user_id", userId)
   if (error) throw error
 
@@ -377,16 +447,21 @@ export async function getTaskStats(
   const stats: TaskStats = {
     dueToday: 0,
     overdue: 0,
+    inProgress: 0,
     upcoming: 0,
     completed: 0,
   }
 
   for (const row of data ?? []) {
-    if (row.completed_at !== null) {
+    if (row.status === "completed") {
       stats.completed++
       continue
     }
-    // Open tasks only from here on.
+    if (row.status === "in_progress") {
+      stats.inProgress++
+      continue
+    }
+    // status === "open" from here on.
     if (row.due_date === null) {
       stats.upcoming++
       continue

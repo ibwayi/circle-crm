@@ -2,13 +2,12 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { CheckCircle2, RotateCcw, Trash2 } from "lucide-react"
+import { CheckCircle2, CircleDot, RotateCcw, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import {
-  bulkCompleteTasksAction,
   bulkDeleteTasksAction,
-  bulkUncompleteTasksAction,
+  bulkSetTasksStatusAction,
 } from "@/app/(app)/_actions/tasks"
 import { BulkActionBar } from "@/components/shared/bulk-action-bar"
 import {
@@ -22,17 +21,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { buttonVariants } from "@/components/ui/button"
-import type { Task } from "@/lib/db/tasks"
+import type { Task, TaskStatus } from "@/lib/db/tasks"
 import { cn } from "@/lib/utils"
 
 /**
- * Bulk-action surface for /tasks. The action set varies by tab:
- *   * Today / Overdue / Upcoming → Erledigen + Löschen (open tasks)
- *   * Completed → Wieder öffnen + Löschen (already-done tasks)
- *
- * In practice we just show all three buttons because a tab can mix
- * states once the user starts toggling complete on individual rows.
- * The BulkActionBar handles its own count chip and clear-X.
+ * Bulk-action surface for /tasks. Status-aware in Phase 29.5 — three
+ * status buttons (Erledigen / In Bearbeitung / Wieder öffnen) plus
+ * Löschen. Each status button is disabled when every selected task
+ * is already in that target state, since pressing it would be a no-op
+ * — gives the user clear feedback about which transitions are
+ * meaningful for the current selection.
  */
 export function TaskBulkActions({
   selectedIds,
@@ -50,39 +48,33 @@ export function TaskBulkActions({
   const ids = Array.from(selectedIds)
   const count = ids.length
 
-  // Decide which "complete" verb to offer: if the majority of the
-  // selection is already complete, "Wieder öffnen" makes more sense
-  // than "Erledigen". Both buttons stay available so power users can
-  // pick either explicitly.
+  // Per-status counts of the current selection. A button is disabled
+  // when its target equals the universal current state — pressing
+  // would change nothing.
   const selected = visibleTasks.filter((t) => selectedIds.has(t.id))
-  const completedCount = selected.filter((t) => t.completed_at !== null).length
-  const openCount = selected.length - completedCount
-
-  async function handleComplete(): Promise<void> {
-    setBusy(true)
-    const result = await bulkCompleteTasksAction(ids)
-    setBusy(false)
-    if (!result.ok) {
-      toast.error("Konnte nicht erledigen", { description: result.error })
-      return
-    }
-    toast.success(
-      `${result.affected} ${result.affected === 1 ? "Aufgabe" : "Aufgaben"} erledigt`
-    )
-    onClear()
-    startTransition(() => router.refresh())
+  const counts = {
+    open: selected.filter((t) => t.status === "open").length,
+    in_progress: selected.filter((t) => t.status === "in_progress").length,
+    completed: selected.filter((t) => t.status === "completed").length,
   }
+  const total = selected.length
 
-  async function handleUncomplete(): Promise<void> {
+  async function handleSetStatus(status: TaskStatus): Promise<void> {
     setBusy(true)
-    const result = await bulkUncompleteTasksAction(ids)
+    const result = await bulkSetTasksStatusAction(ids, status)
     setBusy(false)
     if (!result.ok) {
-      toast.error("Konnte nicht öffnen", { description: result.error })
+      toast.error("Konnte nicht aktualisieren", { description: result.error })
       return
     }
+    const verb =
+      status === "completed"
+        ? "erledigt"
+        : status === "in_progress"
+          ? "in Bearbeitung"
+          : "wieder geöffnet"
     toast.success(
-      `${result.affected} ${result.affected === 1 ? "Aufgabe" : "Aufgaben"} wieder geöffnet`
+      `${result.affected} ${result.affected === 1 ? "Aufgabe" : "Aufgaben"} ${verb}`
     )
     onClear()
     startTransition(() => router.refresh())
@@ -114,15 +106,22 @@ export function TaskBulkActions({
             id: "complete",
             label: "Erledigen",
             icon: CheckCircle2,
-            disabled: busy || openCount === 0,
-            onClick: handleComplete,
+            disabled: busy || counts.completed === total,
+            onClick: () => handleSetStatus("completed"),
           },
           {
-            id: "uncomplete",
+            id: "in-progress",
+            label: "In Bearbeitung",
+            icon: CircleDot,
+            disabled: busy || counts.in_progress === total,
+            onClick: () => handleSetStatus("in_progress"),
+          },
+          {
+            id: "reopen",
             label: "Wieder öffnen",
             icon: RotateCcw,
-            disabled: busy || completedCount === 0,
-            onClick: handleUncomplete,
+            disabled: busy || counts.open === total,
+            onClick: () => handleSetStatus("open"),
           },
           {
             id: "delete",

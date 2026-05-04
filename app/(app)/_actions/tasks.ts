@@ -8,11 +8,13 @@ import {
   deleteTask,
   getDealRevalidationTargets,
   getTask,
+  setTaskStatus,
   uncompleteTask,
   updateTask,
   type CreateTaskInput,
   type TaskParent,
   type TaskPriority,
+  type TaskStatus,
 } from "@/lib/db/tasks"
 import { createClient } from "@/lib/supabase/server"
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -171,6 +173,32 @@ export async function uncompleteTaskAction(
   }
 }
 
+/**
+ * Phase 29.5: write the 3-state task status. Wraps the underlying
+ * setTaskStatus helper which keeps `completed_at` in sync. Used by
+ * the row-level StatusPicker and the bulk action bar's "In Bearbeitung"
+ * button. Existing complete/uncomplete actions stay so the binary
+ * call sites don't have to know about the new union.
+ */
+export async function setTaskStatusAction(
+  id: string,
+  status: TaskStatus
+): Promise<TaskActionResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  try {
+    const task = await setTaskStatus(supabase, id, status)
+    await revalidateForParent(supabase, parentFromTask(task))
+    return { ok: true, taskId: task.id }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}
+
 // Quick date-only mutation for the inline-reschedule popover on task
 // rows. Reuses the partial-update helper from lib/db so it doesn't
 // need to round-trip the full TaskActionInput.
@@ -237,8 +265,15 @@ export type BulkTasksActionResult =
   | { ok: true; affected: number }
   | { ok: false; error: string }
 
-export async function bulkCompleteTasksAction(
-  ids: string[]
+/**
+ * Phase 29.5: status-aware bulk update. Single .update().in("id", ids)
+ * call writes both `status` and `completed_at` in one query so they
+ * never drift. The bulk action bar wires three buttons (Erledigen /
+ * In Bearbeitung / Wieder öffnen) to this with the matching status.
+ */
+export async function bulkSetTasksStatusAction(
+  ids: string[],
+  status: TaskStatus
 ): Promise<BulkTasksActionResult> {
   if (ids.length === 0) return { ok: true, affected: 0 }
 
@@ -251,7 +286,11 @@ export async function bulkCompleteTasksAction(
   try {
     const { error } = await supabase
       .from("tasks")
-      .update({ completed_at: new Date().toISOString() })
+      .update({
+        status,
+        completed_at:
+          status === "completed" ? new Date().toISOString() : null,
+      })
       .in("id", ids)
     if (error) throw error
     revalidatePath("/tasks")
@@ -262,29 +301,19 @@ export async function bulkCompleteTasksAction(
   }
 }
 
+// Back-compat wrappers — kept so binary-call sites don't have to know
+// the TaskStatus union. Anything new should call
+// bulkSetTasksStatusAction directly.
+export async function bulkCompleteTasksAction(
+  ids: string[]
+): Promise<BulkTasksActionResult> {
+  return bulkSetTasksStatusAction(ids, "completed")
+}
+
 export async function bulkUncompleteTasksAction(
   ids: string[]
 ): Promise<BulkTasksActionResult> {
-  if (ids.length === 0) return { ok: true, affected: 0 }
-
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { ok: false, error: "You are no longer signed in." }
-
-  try {
-    const { error } = await supabase
-      .from("tasks")
-      .update({ completed_at: null })
-      .in("id", ids)
-    if (error) throw error
-    revalidatePath("/tasks")
-    revalidatePath("/dashboard")
-    return { ok: true, affected: ids.length }
-  } catch (e) {
-    return { ok: false, error: errorMessage(e) }
-  }
+  return bulkSetTasksStatusAction(ids, "open")
 }
 
 export async function bulkDeleteTasksAction(

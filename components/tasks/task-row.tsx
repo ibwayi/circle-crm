@@ -9,13 +9,13 @@ import { de } from "date-fns/locale"
 import { toast } from "sonner"
 
 import {
-  completeTaskAction,
   rescheduleTaskAction,
-  uncompleteTaskAction,
+  setTaskStatusAction,
 } from "@/app/(app)/_actions/tasks"
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog"
 import { EditTaskDialog } from "@/components/tasks/edit-task-dialog"
 import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
+import { StatusPicker } from "@/components/tasks/status-picker"
 import type { TaskParentOption } from "@/components/tasks/task-form"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
@@ -24,7 +24,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import type { Task, TaskDealContext } from "@/lib/db/tasks"
+import type { Task, TaskDealContext, TaskStatus } from "@/lib/db/tasks"
 import { formatDueDate, type DueTone } from "@/lib/utils/dates"
 import { cn } from "@/lib/utils"
 
@@ -101,23 +101,26 @@ export function TaskRow({
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
-  // useOptimistic: checkbox flips completed_at; date popover updates
-  // due_date. Both apply instantly and commit in the background; on
-  // error the transition ends without the action and the UI snaps back
-  // to truth. Discriminated reducer so future row mutations slot in
-  // without redoing the wiring.
+  // useOptimistic: status picker writes status (and the completed_at
+  // mirror); date popover updates due_date. Both apply instantly and
+  // commit in the background; on error the transition ends without
+  // the action and the UI snaps back to truth.
   type OptimisticAction =
-    | { kind: "complete"; completed: boolean }
+    | { kind: "status"; status: TaskStatus }
     | { kind: "reschedule"; due_date: string | null }
 
   const [optimisticTask, addOptimistic] = useOptimistic(
     task,
     (state, action: OptimisticAction) => {
       switch (action.kind) {
-        case "complete":
+        case "status":
           return {
             ...state,
-            completed_at: action.completed ? new Date().toISOString() : null,
+            status: action.status,
+            completed_at:
+              action.status === "completed"
+                ? new Date().toISOString()
+                : null,
           }
         case "reschedule":
           return { ...state, due_date: action.due_date }
@@ -125,7 +128,8 @@ export function TaskRow({
     }
   )
 
-  const isComplete = optimisticTask.completed_at !== null
+  const optimisticStatus = (optimisticTask.status ?? "open") as TaskStatus
+  const isComplete = optimisticStatus === "completed"
   const due = formatDueDate(optimisticTask.due_date)
   // Completed tasks dim their due tone — a "today" task that's done
   // shouldn't shout in yellow. The badge stays for context.
@@ -133,13 +137,11 @@ export function TaskRow({
     ? DUE_TONE_CLASS.upcoming
     : DUE_TONE_CLASS[due.tone]
 
-  function handleToggle() {
-    const willComplete = !isComplete
+  function handleStatusChange(next: TaskStatus): void {
+    if (next === optimisticStatus) return
     startTransition(async () => {
-      addOptimistic({ kind: "complete", completed: willComplete })
-      const result = willComplete
-        ? await completeTaskAction(task.id)
-        : await uncompleteTaskAction(task.id)
+      addOptimistic({ kind: "status", status: next })
+      const result = await setTaskStatusAction(task.id, next)
       if (!result.ok) {
         toast.error("Konnte nicht aktualisiert werden", {
           description: result.error,
@@ -186,13 +188,17 @@ export function TaskRow({
             aria-label={`Aufgabe ${task.title} auswählen`}
           />
         )}
-        <input
-          type="checkbox"
-          checked={isComplete}
-          onChange={handleToggle}
-          className="mt-0.5 h-4 w-4 cursor-pointer rounded border border-input accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          aria-label={isComplete ? "Als offen markieren" : "Als erledigt markieren"}
-        />
+        {/* StatusPicker replaces the binary complete-checkbox from
+            Phase 24/29. Read-only mode keeps the same icon for
+            visual consistency but disables interaction so transitive
+            views can't accidentally cycle a task's state. */}
+        <div className="mt-0.5">
+          <StatusPicker
+            value={optimisticStatus}
+            onChange={handleStatusChange}
+            disabled={readOnly}
+          />
+        </div>
         <div className="min-w-0 flex-1">
           <button
             type="button"

@@ -13,6 +13,7 @@ import {
   getTaskDealContexts,
   getTaskStats,
   listCompletedTasks,
+  listInProgressTasks,
   listOverdueTasks,
   listTasksDueToday,
   listUpcomingTasks,
@@ -23,6 +24,7 @@ import { createClient } from "@/lib/supabase/server"
 const VALID_TABS: readonly TasksTab[] = [
   "today",
   "overdue",
+  "in_progress",
   "upcoming",
   "completed",
 ]
@@ -37,6 +39,7 @@ function parseTab(raw: string | undefined): TasksTab {
 const EMPTY_LABEL: Record<TasksTab, string> = {
   today: "Keine Aufgaben für heute.",
   overdue: "Nichts überfällig 🎉",
+  in_progress: "Keine Aufgaben in Bearbeitung.",
   upcoming: "Keine kommenden Aufgaben.",
   completed: "Noch keine erledigten Aufgaben.",
 }
@@ -123,6 +126,7 @@ export default async function TasksPage({
   const counts = {
     today: stats.dueToday,
     overdue: stats.overdue,
+    in_progress: stats.inProgress,
     upcoming: stats.upcoming,
     completed: stats.completed,
   }
@@ -180,6 +184,8 @@ async function fetchTabTasks(
       return listTasksDueToday(supabase)
     case "overdue":
       return listOverdueTasks(supabase)
+    case "in_progress":
+      return listInProgressTasks(supabase)
     case "upcoming":
       return listUpcomingTasks(supabase)
     case "completed":
