@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Plus } from "lucide-react"
 
 import { AddTaskDialog } from "@/components/tasks/add-task-dialog"
@@ -14,14 +14,28 @@ export function AddTaskButton({
   variant = "default",
   size = "default",
   label = "Aufgabe hinzufügen",
+  initialOpen = false,
 }: {
   parentOptions: TaskParentOption[]
   dealOptions: PipelineDealOption[]
   variant?: "default" | "outline"
   size?: "default" | "sm"
   label?: string
+  // Phase 26.5: Cmd+K wires "Neue Aufgabe anlegen" to /tasks?new=true.
+  // Page forwards as initialOpen; mount effect strips the param via
+  // history.replaceState so a reload doesn't re-open the dialog.
+  initialOpen?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(initialOpen)
+
+  useEffect(() => {
+    if (!initialOpen) return
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    url.searchParams.delete("new")
+    window.history.replaceState(null, "", url.toString())
+  }, [initialOpen])
+
   return (
     <>
       <Button

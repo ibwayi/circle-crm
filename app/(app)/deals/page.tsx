@@ -74,6 +74,7 @@ export default async function DealsPage({
     sort?: string
     dir?: string
     stale?: string
+    new?: string
   }>
 }) {
   const params = await searchParams
@@ -84,6 +85,10 @@ export default async function DealsPage({
   const sortField = parseSortField(params.sort)
   const sortDirection = parseSortDir(params.dir)
   const staleOnly = parseStaleOnly(params.stale)
+  // Phase 26.5: Cmd+K's "Neuen Deal anlegen" lands here with ?new=true.
+  // Forward as initialOpen so the dialog appears immediately. The
+  // AddDealButton strips the param via history.replaceState on mount.
+  const autoOpenNew = params.new === "true"
 
   const supabase = await createClient()
 
@@ -140,7 +145,11 @@ export default async function DealsPage({
             Deals across all stages.
           </p>
         </div>
-        <AddDealButton companies={companies} contacts={contacts} />
+        <AddDealButton
+          companies={companies}
+          contacts={contacts}
+          initialOpen={autoOpenNew}
+        />
       </header>
 
       <DealsList

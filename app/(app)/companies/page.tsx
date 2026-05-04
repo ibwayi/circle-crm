@@ -10,10 +10,14 @@ export default async function CompaniesPage({
   searchParams,
 }: {
   // Next 16: searchParams is a Promise — must await.
-  searchParams: Promise<{ search?: string }>
+  searchParams: Promise<{ search?: string; new?: string }>
 }) {
   const params = await searchParams
   const search = params.search?.trim() || undefined
+  // Phase 26.5: Cmd+K's "Neue Firma anlegen" lands here with ?new=true.
+  // Forwarded only to the header AddCompanyButton — empty-state instance
+  // keeps default false to avoid double-opening when the list is empty.
+  const autoOpenNew = params.new === "true"
 
   const supabase = await createClient()
   const companies = await listCompaniesWithCounts(supabase, { search })
@@ -31,7 +35,7 @@ export default async function CompaniesPage({
             Organisations you&apos;re working with.
           </p>
         </div>
-        <AddCompanyButton />
+        <AddCompanyButton initialOpen={autoOpenNew} />
       </header>
 
       <CompaniesSearch initialValue={search ?? ""} />

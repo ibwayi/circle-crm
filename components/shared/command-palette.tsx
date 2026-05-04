@@ -2,21 +2,16 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useTheme } from "next-themes"
 import {
   Building2,
   CheckCircle2,
   Columns3,
   LayoutDashboard,
   ListTodo,
-  LogOut,
-  Moon,
   Plus,
-  Sun,
   Users,
 } from "lucide-react"
 
-import { signOut } from "@/lib/auth/actions"
 import { useCommandPalette } from "@/lib/hooks/use-command-palette"
 import { createClient } from "@/lib/supabase/client"
 import {
@@ -82,7 +77,6 @@ const SEARCH_DEBOUNCE_MS = 200
  */
 export function CommandPalette() {
   const router = useRouter()
-  const { resolvedTheme, setTheme } = useTheme()
   const { open, setOpen, toggle } = useCommandPalette()
 
   const [query, setQuery] = useState("")
@@ -158,22 +152,6 @@ export function CommandPalette() {
     setOpen(false)
     router.push(href)
   }
-
-  function handleThemeToggle(): void {
-    setOpen(false)
-    setTheme(resolvedTheme === "dark" ? "light" : "dark")
-  }
-
-  function handleSignOut(): void {
-    setOpen(false)
-    void signOut()
-  }
-
-  const isDark = resolvedTheme === "dark"
-  const ThemeIcon = isDark ? Sun : Moon
-  const themeLabel = isDark
-    ? "Theme wechseln (zu Hell)"
-    : "Theme wechseln (zu Dunkel)"
 
   const showResults = query.trim().length > 0
   const totalHits =
@@ -310,22 +288,6 @@ export function CommandPalette() {
           >
             <CheckCircle2 aria-hidden="true" />
             Neue Aufgabe anlegen
-          </CommandItem>
-          <CommandItem
-            value="action-toggle-theme"
-            onSelect={handleThemeToggle}
-            keywords={["theme", "dark", "light", "hell", "dunkel"]}
-          >
-            <ThemeIcon aria-hidden="true" />
-            {themeLabel}
-          </CommandItem>
-          <CommandItem
-            value="action-sign-out"
-            onSelect={handleSignOut}
-            keywords={["abmelden", "logout", "signout", "ausloggen"]}
-          >
-            <LogOut aria-hidden="true" />
-            Abmelden
           </CommandItem>
         </CommandGroup>
 
