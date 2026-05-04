@@ -1,3 +1,7 @@
+<p align="left">
+  <img src="docs/logo.svg" width="56" height="56" alt="Circle logo" />
+</p>
+
 # Circle CRM
 
 > A modern fullstack CRM with companies, contacts, deals, and a drag-and-drop pipeline.

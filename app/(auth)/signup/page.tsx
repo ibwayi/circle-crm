@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Logo } from "@/components/shared/logo"
 import { SignupForm } from "./signup-form"
 
 export default function SignupPage() {
@@ -14,8 +15,8 @@ export default function SignupPage() {
         </Link>{" "}
         first.
       </p>
-      <div className="mb-1 text-center text-sm font-semibold tracking-tight text-muted-foreground">
-        Circle
+      <div className="mb-3 flex justify-center">
+        <Logo size={48} />
       </div>
       <h1 className="text-center text-xl font-semibold">
         Create your Circle account

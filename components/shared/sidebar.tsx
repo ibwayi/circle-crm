@@ -10,6 +10,7 @@ import {
   Workflow,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import { Logo } from "@/components/shared/logo"
 import { UserMenu } from "@/components/shared/user-menu"
 import { cn } from "@/lib/utils"
 
@@ -54,10 +55,11 @@ export function SidebarContent({ email }: { email: string }) {
       <div className="border-b border-border px-6 py-6">
         <Link
           href="/dashboard"
-          className="text-lg font-medium tracking-tight"
+          className="inline-flex items-center gap-2 text-lg font-medium tracking-tight"
           aria-label="Circle home"
         >
-          Circle
+          <Logo size={24} aria-hidden="true" />
+          <span>Circle</span>
         </Link>
       </div>
 
