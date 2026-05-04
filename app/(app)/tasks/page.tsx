@@ -3,7 +3,7 @@ import { ListTodo } from "lucide-react"
 import type { PipelineDealOption } from "@/components/tasks/pipeline-picker-modal"
 import { AddTaskButton } from "@/components/tasks/add-task-button"
 import type { TaskParentOption } from "@/components/tasks/task-form"
-import { TaskRow } from "@/components/tasks/task-row"
+import { TasksList } from "@/components/tasks/tasks-list"
 import { TasksTabs, type TasksTab } from "@/components/tasks/tasks-tabs"
 import { listDeals, type DealWithRelations } from "@/lib/db/deals"
 import type { DealStage } from "@/components/deals/stage-badge"
@@ -153,20 +153,12 @@ export default async function TasksPage({
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              parentOptions={parentOptions}
-              dealOptions={dealOptions}
-              showParentHint
-              dealContext={
-                task.deal_id ? dealContexts.get(task.deal_id) ?? null : null
-              }
-            />
-          ))}
-        </div>
+        <TasksList
+          tasks={tasks}
+          parentOptions={parentOptions}
+          dealOptions={dealOptions}
+          dealContexts={dealContexts}
+        />
       )}
     </div>
   )

@@ -84,3 +84,38 @@ export async function deleteCompanyAction(id: string): Promise<void> {
   revalidatePath(`/companies/${id}`)
   redirect("/companies")
 }
+
+// -----------------------------------------------------------------------------
+// Phase 29 — bulk actions for the multi-select UX on /companies.
+// Single .in("id", ids) per call. RLS scopes to the user. Note that
+// deleting a company nulls out company_id on linked contacts/deals
+// via the schema's ON DELETE SET NULL — it doesn't cascade.
+// -----------------------------------------------------------------------------
+
+export type BulkCompaniesActionResult =
+  | { ok: true; affected: number }
+  | { ok: false; error: string }
+
+export async function bulkDeleteCompaniesAction(
+  ids: string[]
+): Promise<BulkCompaniesActionResult> {
+  if (ids.length === 0) return { ok: true, affected: 0 }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  try {
+    const { error } = await supabase.from("companies").delete().in("id", ids)
+    if (error) throw error
+    revalidatePath("/companies")
+    revalidatePath("/contacts")
+    revalidatePath("/deals")
+    revalidatePath("/dashboard")
+    return { ok: true, affected: ids.length }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}

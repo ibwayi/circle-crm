@@ -60,6 +60,7 @@ export function TaskRow({
   showParentHint,
   dealContext,
   readOnly = false,
+  selection,
 }: {
   task: Task
   // Legacy thin catalog used as a label fallback by ParentHint when no
@@ -86,6 +87,14 @@ export function TaskRow({
   // still work — they're the user's only way to act on a task surfaced
   // via transitive context without navigating to its deal.
   readOnly?: boolean
+  // Phase 29 multi-select. When provided, renders a small select-
+  // checkbox to the LEFT of the existing complete-checkbox. The two
+  // are visually distinct (square select, accent-styled complete) and
+  // separated by a small gap. Selected rows get a tinted background.
+  selection?: {
+    isSelected: (id: string) => boolean
+    toggle: (id: string) => void
+  }
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -163,9 +172,20 @@ export function TaskRow({
       <article
         className={cn(
           "group flex items-start gap-3 rounded-md border border-border bg-card p-3 transition-opacity",
-          isComplete && "opacity-60"
+          isComplete && "opacity-60",
+          selection?.isSelected(task.id) && "bg-muted/50"
         )}
       >
+        {selection && (
+          <input
+            type="checkbox"
+            checked={selection.isSelected(task.id)}
+            onChange={() => selection.toggle(task.id)}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-0.5 h-4 w-4 cursor-pointer rounded border border-input accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label={`Aufgabe ${task.title} auswählen`}
+          />
+        )}
         <input
           type="checkbox"
           checked={isComplete}

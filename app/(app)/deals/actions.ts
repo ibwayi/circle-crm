@@ -196,3 +196,66 @@ export async function unlinkDealContactAction(
     return { ok: false, error: errorMessage(e) }
   }
 }
+
+// -----------------------------------------------------------------------------
+// Phase 29 — bulk actions for the multi-select UX on /deals.
+// Both helpers go through a single .in("id", ids) query — RLS scopes
+// to the user's rows so unauthorised IDs are silently ignored. Empty
+// arrays short-circuit before any network round-trip.
+// -----------------------------------------------------------------------------
+
+export type BulkActionResult =
+  | { ok: true; affected: number }
+  | { ok: false; error: string }
+
+export async function bulkUpdateDealsStageAction(
+  ids: string[],
+  stage: DealStage
+): Promise<BulkActionResult> {
+  if (ids.length === 0) return { ok: true, affected: 0 }
+  const parsed = dealStageSchema.safeParse(stage)
+  if (!parsed.success) {
+    return { ok: false, error: "Ungültige Stufe." }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  try {
+    const { error } = await supabase
+      .from("deals")
+      .update({ stage })
+      .in("id", ids)
+    if (error) throw error
+    revalidatePath("/deals")
+    revalidatePath("/dashboard")
+    return { ok: true, affected: ids.length }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}
+
+export async function bulkDeleteDealsAction(
+  ids: string[]
+): Promise<BulkActionResult> {
+  if (ids.length === 0) return { ok: true, affected: 0 }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  try {
+    const { error } = await supabase.from("deals").delete().in("id", ids)
+    if (error) throw error
+    revalidatePath("/deals")
+    revalidatePath("/dashboard")
+    return { ok: true, affected: ids.length }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}

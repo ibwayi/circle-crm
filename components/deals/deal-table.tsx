@@ -68,12 +68,24 @@ export function DealTable({
   sortDirection,
   onSortChange,
   hideHeader = false,
+  selection,
 }: {
   deals: DealWithRelations[]
   sortField: DealSortField
   sortDirection: SortDirection
   onSortChange: (field: DealSortField) => void
   hideHeader?: boolean
+  // Phase 29: optional multi-select. When passed, the table renders a
+  // checkbox column on the left + tri-state header checkbox. When
+  // omitted, the table renders without any checkbox column (used by
+  // DealGroupsView's nested tables where selection is owned by the
+  // parent groups view).
+  selection?: {
+    isSelected: (id: string) => boolean
+    toggle: (id: string) => void
+    toggleAll: () => void
+    mode: "none" | "some" | "all"
+  }
 }) {
   const sorted = useMemo(() => {
     const dir = sortDirection === "asc" ? 1 : -1
@@ -120,6 +132,14 @@ export function DealTable({
         {!hideHeader && (
           <TableHeader>
             <TableRow className="hover:bg-transparent">
+              {selection && (
+                <TableHead className="w-10">
+                  <SelectAllCheckbox
+                    mode={selection.mode}
+                    onToggle={selection.toggleAll}
+                  />
+                </TableHead>
+              )}
               <SortableTh
                 field="title"
                 activeField={sortField}
@@ -172,7 +192,11 @@ export function DealTable({
         )}
         <TableBody>
           {sorted.map((deal) => (
-            <DealRow key={deal.id} deal={deal} />
+            <DealRow
+              key={deal.id}
+              deal={deal}
+              selection={selection}
+            />
           ))}
         </TableBody>
       </Table>
@@ -180,8 +204,20 @@ export function DealTable({
   )
 }
 
-function DealRow({ deal }: { deal: DealWithRelations }) {
+function DealRow({
+  deal,
+  selection,
+}: {
+  deal: DealWithRelations
+  selection?: {
+    isSelected: (id: string) => boolean
+    toggle: (id: string) => void
+    toggleAll: () => void
+    mode: "none" | "some" | "all"
+  }
+}) {
   const router = useRouter()
+  const checked = selection?.isSelected(deal.id) ?? false
 
   function handleRowClick() {
     router.push(`/deals/${deal.id}`)
@@ -190,8 +226,28 @@ function DealRow({ deal }: { deal: DealWithRelations }) {
   return (
     <TableRow
       onClick={handleRowClick}
-      className="cursor-pointer hover:bg-muted/50"
+      className={cn(
+        "cursor-pointer hover:bg-muted/50",
+        checked && "bg-muted/50"
+      )}
     >
+      {selection && (
+        <TableCell
+          className="w-10"
+          onClick={(e) => {
+            // Cell click triggers checkbox; row click is preserved for
+            // non-cell areas via the TableRow's handleRowClick.
+            e.stopPropagation()
+            selection.toggle(deal.id)
+          }}
+        >
+          <RowCheckbox
+            checked={checked}
+            onChange={() => selection.toggle(deal.id)}
+            ariaLabel={`Deal ${deal.title} auswählen`}
+          />
+        </TableCell>
+      )}
       <TableCell className="font-medium">
         <div className="flex items-center gap-2">
           <span className="truncate">{deal.title}</span>
@@ -279,5 +335,53 @@ function SortableTh({
           ))}
       </button>
     </TableHead>
+  )
+}
+
+function SelectAllCheckbox({
+  mode,
+  onToggle,
+}: {
+  mode: "none" | "some" | "all"
+  onToggle: () => void
+}) {
+  // The native <input type="checkbox"> indeterminate prop only takes
+  // effect via DOM property assignment (HTML attribute is ignored).
+  // Set it via a callback ref so React doesn't have to track it as
+  // controlled state.
+  const setRef = (el: HTMLInputElement | null) => {
+    if (el) el.indeterminate = mode === "some"
+  }
+  return (
+    <input
+      type="checkbox"
+      ref={setRef}
+      checked={mode === "all"}
+      onChange={onToggle}
+      onClick={(e) => e.stopPropagation()}
+      aria-label="Alle auswählen"
+      className="h-4 w-4 cursor-pointer rounded border border-input accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    />
+  )
+}
+
+function RowCheckbox({
+  checked,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean
+  onChange: () => void
+  ariaLabel: string
+}) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={ariaLabel}
+      className="h-4 w-4 cursor-pointer rounded border border-input accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    />
   )
 }

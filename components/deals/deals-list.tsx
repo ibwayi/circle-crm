@@ -11,6 +11,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Columns3, LayoutList, Rows3, Search, TrendingUp } from "lucide-react"
 
 import { AddDealButton } from "@/components/deals/add-deal-button"
+import { DealBulkActions } from "@/components/deals/deal-bulk-actions"
 import { DealGroupsView } from "@/components/deals/deal-groups-view"
 import { DealKanban } from "@/components/deals/deal-kanban"
 import {
@@ -23,6 +24,7 @@ import type { ContactOption } from "@/components/shared/contact-combobox"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Toggle } from "@/components/ui/toggle"
+import { useSelection } from "@/lib/hooks/use-selection"
 import {
   Select,
   SelectContent,
@@ -176,6 +178,14 @@ export function DealsList({
     () => readView(defaultView),
     () => defaultView
   )
+
+  // Phase 29: bulk-select state. Selection is owned here so the
+  // BulkActionBar (rendered alongside DealTable) and the table's
+  // checkbox column see the same Set. Only the Table view shows the
+  // multi-select UI; switching to Groups or Kanban hides the bar but
+  // preserves the selection (the user might switch back).
+  const visibleIds = deals.map((d) => d.id)
+  const selection = useSelection(visibleIds)
 
   const changeView = useCallback((next: View) => {
     try {
@@ -465,6 +475,22 @@ export function DealsList({
           sortField={sortField}
           sortDirection={sortDirection}
           onSortChange={handleSortChange}
+          selection={{
+            isSelected: selection.isSelected,
+            toggle: selection.toggle,
+            toggleAll: selection.toggleAll,
+            mode: selection.mode,
+          }}
+        />
+      )}
+
+      {/* Bulk-action bar — only shown in Table view; switching views
+          preserves the selection but hides the bar. */}
+      {view === "table" && (
+        <DealBulkActions
+          selectedIds={selection.selected}
+          visibleDeals={deals}
+          onClear={selection.clear}
         />
       )}
     </div>

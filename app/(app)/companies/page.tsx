@@ -2,7 +2,7 @@ import { Building2 } from "lucide-react"
 
 import { AddCompanyButton } from "@/components/companies/add-company-button"
 import { CompaniesSearch } from "@/components/companies/companies-search"
-import { CompanyTable } from "@/components/companies/company-table"
+import { CompanyList } from "@/components/companies/company-list"
 import { listCompaniesWithCounts } from "@/lib/db/companies"
 import { createClient } from "@/lib/supabase/server"
 
@@ -43,7 +43,7 @@ export default async function CompaniesPage({
       ) : showNoResults ? (
         <CompanyEmptyNoResults query={search ?? ""} />
       ) : (
-        <CompanyTable companies={companies} />
+        <CompanyList companies={companies} />
       )}
     </div>
   )

@@ -223,3 +223,88 @@ function parentFromTask(task: { deal_id: string | null }): TaskParent {
   if (task.deal_id !== null) return { type: "deal", dealId: task.deal_id }
   return { type: "standalone" }
 }
+
+// -----------------------------------------------------------------------------
+// Phase 29 — bulk actions for the multi-select UX on /tasks. RLS
+// scopes by user_id; the queries don't need explicit filters. Each
+// helper revalidates /tasks + /dashboard. Skipping the per-deal /
+// per-company / per-contact revalidation here because bulk operations
+// from /tasks rarely touch a single deal page (and the user can refresh
+// if they navigate over).
+// -----------------------------------------------------------------------------
+
+export type BulkTasksActionResult =
+  | { ok: true; affected: number }
+  | { ok: false; error: string }
+
+export async function bulkCompleteTasksAction(
+  ids: string[]
+): Promise<BulkTasksActionResult> {
+  if (ids.length === 0) return { ok: true, affected: 0 }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  try {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ completed_at: new Date().toISOString() })
+      .in("id", ids)
+    if (error) throw error
+    revalidatePath("/tasks")
+    revalidatePath("/dashboard")
+    return { ok: true, affected: ids.length }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}
+
+export async function bulkUncompleteTasksAction(
+  ids: string[]
+): Promise<BulkTasksActionResult> {
+  if (ids.length === 0) return { ok: true, affected: 0 }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  try {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ completed_at: null })
+      .in("id", ids)
+    if (error) throw error
+    revalidatePath("/tasks")
+    revalidatePath("/dashboard")
+    return { ok: true, affected: ids.length }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}
+
+export async function bulkDeleteTasksAction(
+  ids: string[]
+): Promise<BulkTasksActionResult> {
+  if (ids.length === 0) return { ok: true, affected: 0 }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  try {
+    const { error } = await supabase.from("tasks").delete().in("id", ids)
+    if (error) throw error
+    revalidatePath("/tasks")
+    revalidatePath("/dashboard")
+    return { ok: true, affected: ids.length }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}

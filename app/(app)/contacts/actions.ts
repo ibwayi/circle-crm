@@ -84,3 +84,34 @@ export async function deleteContactAction(id: string): Promise<void> {
   revalidatePath(`/contacts/${id}`)
   redirect("/contacts")
 }
+
+// -----------------------------------------------------------------------------
+// Phase 29 — bulk actions for the multi-select UX on /contacts.
+// Single .in("id", ids) per call. RLS scopes to the user.
+// -----------------------------------------------------------------------------
+
+export type BulkContactsActionResult =
+  | { ok: true; affected: number }
+  | { ok: false; error: string }
+
+export async function bulkDeleteContactsAction(
+  ids: string[]
+): Promise<BulkContactsActionResult> {
+  if (ids.length === 0) return { ok: true, affected: 0 }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "You are no longer signed in." }
+
+  try {
+    const { error } = await supabase.from("contacts").delete().in("id", ids)
+    if (error) throw error
+    revalidatePath("/contacts")
+    revalidatePath("/dashboard")
+    return { ok: true, affected: ids.length }
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) }
+  }
+}

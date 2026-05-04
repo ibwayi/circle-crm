@@ -3,7 +3,7 @@ import { Users } from "lucide-react"
 import { AddContactButton } from "@/components/contacts/add-contact-button"
 import { CompanyFilter } from "@/components/contacts/company-filter"
 import { ContactsSearch } from "@/components/contacts/contacts-search"
-import { ContactTable } from "@/components/contacts/contact-table"
+import { ContactList } from "@/components/contacts/contact-list"
 import { listCompanies } from "@/lib/db/companies"
 import { listContactsWithCounts } from "@/lib/db/contacts"
 import { createClient } from "@/lib/supabase/server"
@@ -65,7 +65,7 @@ export default async function ContactsPage({
       ) : showNoResults ? (
         <ContactEmptyNoResults />
       ) : (
-        <ContactTable contacts={contacts} />
+        <ContactList contacts={contacts} />
       )}
     </div>
   )
