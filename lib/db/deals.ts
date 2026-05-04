@@ -422,7 +422,7 @@ export async function setDealPrimaryContact(
 
 export async function getDealStats(
   client: Client,
-  opts?: { userId?: string }
+  opts?: { userId?: string; staleThreshold?: number }
 ): Promise<DealStats> {
   // One query for all deal rows, aggregate in JS. At portfolio scale
   // (≤200 deals per user), this is faster and simpler than five
@@ -447,12 +447,12 @@ export async function getDealStats(
     now.getMonth(),
     1
   ).toISOString()
-  // Phase 25: stale cutoff. Server-side stats use the default threshold
-  // — see useStaleThreshold for why client preference doesn't reach
-  // here in v1.
-  const STALE_DAYS = 7
+  // Phase 28: stale cutoff. Caller passes the user's preference (or
+  // the 7-day default) so the dashboard's "Vernachlässigte Deals"
+  // counter respects what the user set on the Profile page.
+  const staleDays = opts?.staleThreshold ?? 7
   const staleCutoff = new Date(
-    Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000
+    Date.now() - staleDays * 24 * 60 * 60 * 1000
   ).toISOString()
 
   const stats: DealStats = {

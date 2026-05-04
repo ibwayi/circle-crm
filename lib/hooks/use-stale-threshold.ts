@@ -8,44 +8,46 @@ const STORAGE_KEY = "circle:stale-threshold"
 const STORAGE_EVENT = "circle:stale-threshold-change"
 
 /**
- * Per-user stale-threshold preference, persisted in localStorage.
+ * Per-user stale-threshold preference. Resolution order:
+ *   1. localStorage (per-device override — what the user set on this
+ *      machine specifically)
+ *   2. `initialThreshold` from server preferences (user_preferences
+ *      .stale_threshold_days, fetched server-side and passed in by
+ *      the caller)
+ *   3. STALE_THRESHOLD_DEFAULT_DAYS (7) as the absolute fallback
  *
- * Server-rendered surfaces (Dashboard's "Vernachlässigte Deals"
- * section, the `?stale=true` filter on /deals) intentionally use the
- * default threshold rather than reading the user's preference — the
- * preference lives on the client. v1: don't worry about the
- * server-side override; if a user changes the threshold to 14 days,
- * the dashboard section keeps using 7. Future Phase 28 (user prefs
- * DB) will lift this to a proper per-user setting.
+ * Phase 25 stored only step 1; Phase 28 added the server-side
+ * preference layer in step 2 so a value set on the Profile page
+ * applies on every device until the user explicitly overrides it
+ * locally.
  *
- * Implementation mirrors the deals-view pattern in
- * components/deals/deals-list.tsx and the collapsed-groups pattern in
- * deal-groups-view.tsx — useSyncExternalStore over localStorage with
- * a custom event for in-tab updates and the standard `storage` event
- * for cross-tab sync.
+ * Implementation: useSyncExternalStore over localStorage. Same
+ * pattern as the deals-view persistence in deals-list.tsx — custom
+ * event for in-tab updates, standard `storage` event for cross-tab
+ * sync. The cache key includes `initialThreshold` so a preference
+ * change invalidates the cached snapshot.
  */
 
 let cachedRaw: string | null | undefined = undefined
+let cachedFallback = STALE_THRESHOLD_DEFAULT_DAYS
 let cachedThreshold = STALE_THRESHOLD_DEFAULT_DAYS
 
-function readThreshold(): number {
+function readThreshold(fallback: number): number {
   let raw: string | null = null
   try {
     raw = window.localStorage.getItem(STORAGE_KEY)
   } catch {
     raw = null
   }
-  if (raw === cachedRaw) return cachedThreshold
+  if (raw === cachedRaw && fallback === cachedFallback) return cachedThreshold
   cachedRaw = raw
+  cachedFallback = fallback
   if (!raw) {
-    cachedThreshold = STALE_THRESHOLD_DEFAULT_DAYS
+    cachedThreshold = fallback
     return cachedThreshold
   }
   const parsed = parseInt(raw, 10)
-  cachedThreshold =
-    Number.isFinite(parsed) && parsed > 0
-      ? parsed
-      : STALE_THRESHOLD_DEFAULT_DAYS
+  cachedThreshold = Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
   return cachedThreshold
 }
 
@@ -58,15 +60,13 @@ function subscribeStorage(callback: () => void): () => void {
   }
 }
 
-function getServerThreshold(): number {
-  return STALE_THRESHOLD_DEFAULT_DAYS
-}
-
-export function useStaleThreshold(): readonly [number, (days: number) => void] {
+export function useStaleThreshold(
+  initialThreshold: number = STALE_THRESHOLD_DEFAULT_DAYS
+): readonly [number, (days: number) => void] {
   const threshold = useSyncExternalStore(
     subscribeStorage,
-    readThreshold,
-    getServerThreshold
+    () => readThreshold(initialThreshold),
+    () => initialThreshold
   )
 
   const setThreshold = useCallback((days: number) => {

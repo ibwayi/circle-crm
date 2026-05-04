@@ -5,7 +5,6 @@ import { de } from "date-fns/locale"
 
 import { StageBadge, type DealStage } from "@/components/deals/stage-badge"
 import type { DealWithRelations } from "@/lib/db/deals"
-import { STALE_THRESHOLD_DEFAULT_DAYS } from "@/lib/utils/stale"
 
 const eurFormatter = new Intl.NumberFormat("de-DE", {
   style: "currency",
@@ -33,9 +32,11 @@ function formatRelative(iso: string): string {
 export function DashboardStaleDeals({
   deals,
   totalCount,
+  thresholdDays,
 }: {
   deals: DealWithRelations[]
   totalCount: number
+  thresholdDays: number
 }) {
   if (deals.length === 0) return null
 
@@ -67,7 +68,7 @@ export function DashboardStaleDeals({
         </Link>
       </header>
       <p className="text-xs text-muted-foreground">
-        Seit mehr als {STALE_THRESHOLD_DEFAULT_DAYS} Tagen ohne Aktivität.
+        Seit mehr als {thresholdDays} Tagen ohne Aktivität.
       </p>
       <ul className="divide-y divide-border rounded-lg border border-border bg-card">
         {deals.map((deal) => (

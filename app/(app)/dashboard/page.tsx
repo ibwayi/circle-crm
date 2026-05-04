@@ -31,7 +31,9 @@ import {
   listOverdueTasks,
   listTasksDueToday,
 } from "@/lib/db/tasks"
+import { getUserPreferences } from "@/lib/db/user-preferences"
 import { createClient } from "@/lib/supabase/server"
+import { STALE_THRESHOLD_DEFAULT_DAYS } from "@/lib/utils/stale"
 import { cn } from "@/lib/utils"
 
 const eurFormatter = new Intl.NumberFormat("de-DE", {
@@ -63,6 +65,13 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
+  // Fetch the user's stale-threshold preference first — both
+  // getDealStats and listStaleDeals need it. Single round-trip;
+  // null preferences fall back to the default.
+  const preferences = await getUserPreferences(supabase, user.id)
+  const staleThreshold =
+    preferences?.stale_threshold_days ?? STALE_THRESHOLD_DEFAULT_DAYS
+
   // The dashboard's primary stat block is now deal- AND task-driven. Plus
   // companies / contacts (for the Add Deal combobox) and a separate deal
   // list (for the task picker's parent options). Single Promise.all so
@@ -78,7 +87,7 @@ export default async function DashboardPage() {
     deals,
     staleDeals,
   ] = await Promise.all([
-    getDealStats(supabase),
+    getDealStats(supabase, { staleThreshold }),
     getRecentDealActivity(supabase, { limit: 5 }),
     listCompanies(supabase),
     listContacts(supabase),
@@ -86,7 +95,7 @@ export default async function DashboardPage() {
     listTasksDueToday(supabase),
     listOverdueTasks(supabase),
     listDeals(supabase),
-    listStaleDeals(supabase, { limit: 5 }),
+    listStaleDeals(supabase, { limit: 5, threshold: staleThreshold }),
   ])
 
   const companies = companiesFull.map((c) => ({ id: c.id, name: c.name }))
@@ -228,6 +237,7 @@ export default async function DashboardPage() {
       <DashboardStaleDeals
         deals={staleDeals}
         totalCount={stats.staleDeals}
+        thresholdDays={staleThreshold}
       />
 
       <DashboardRecentActivity deals={recentDeals} />

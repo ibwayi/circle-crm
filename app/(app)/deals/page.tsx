@@ -8,6 +8,10 @@ import type { ContactOption } from "@/components/shared/contact-combobox"
 import { listCompanies } from "@/lib/db/companies"
 import { listContacts } from "@/lib/db/contacts"
 import { listDeals, type DealStage } from "@/lib/db/deals"
+import {
+  getUserPreferences,
+  type DefaultDealView,
+} from "@/lib/db/user-preferences"
 import { createClient } from "@/lib/supabase/server"
 import { DEAL_SOURCES } from "@/lib/validations/deal"
 
@@ -88,9 +92,20 @@ export default async function DealsPage({
   // useAutoOpenFromQuery — server doesn't need to forward it.
 
   const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  // The Add Deal dialog needs companies + contacts for its comboboxes.
-  // Fetch alongside the main list so the page renders in one round-trip.
+  // Phase 28: preferences are needed before the main fetch because
+  // the threshold parameterises the staleOnly filter (and localStorage
+  // is unreachable from the server). Sequential round-trip is cheap.
+  const preferences = user ? await getUserPreferences(supabase, user.id) : null
+  const defaultView: DefaultDealView =
+    (preferences?.default_deal_view as DefaultDealView | null) ?? "table"
+  const staleThreshold = preferences?.stale_threshold_days ?? undefined
+
+  // Add Deal dialog needs companies + contacts for its comboboxes;
+  // main list + filters parallel-fetch.
   const [filtered, companiesFull, contactsFull] = await Promise.all([
     listDeals(supabase, {
       stage,
@@ -98,6 +113,7 @@ export default async function DealsPage({
       source,
       companyId: companyId ?? undefined,
       staleOnly: staleOnly || undefined,
+      staleThreshold,
     }),
     listCompanies(supabase),
     listContacts(supabase),
@@ -157,6 +173,7 @@ export default async function DealsPage({
         sortDirection={sortDirection}
         companies={companies}
         contacts={contacts}
+        defaultView={defaultView}
       />
     </div>
   )

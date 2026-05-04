@@ -22,7 +22,15 @@ function getPageTitle(pathname: string): string {
   return ""
 }
 
-export function Topbar({ email }: { email: string }) {
+export function Topbar({
+  email,
+  displayName,
+  avatarUrl,
+}: {
+  email: string
+  displayName: string | null
+  avatarUrl: string | null
+}) {
   const pathname = usePathname()
   const title = getPageTitle(pathname)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -38,7 +46,11 @@ export function Topbar({ email }: { email: string }) {
           <Menu className="h-5 w-5" />
         </SheetTrigger>
         <SheetContent side="left" className="w-60 p-0">
-          <SidebarContent email={email} />
+          <SidebarContent
+            email={email}
+            displayName={displayName}
+            avatarUrl={avatarUrl}
+          />
         </SheetContent>
       </Sheet>
 
@@ -74,7 +86,12 @@ export function Topbar({ email }: { email: string }) {
       {/* Compact user menu lives next to the theme toggle on desktop too —
           mirrors the sidebar's bottom UserMenu so users have a familiar
           sign-out target regardless of where they look. */}
-      <UserMenu email={email} variant="compact" />
+      <UserMenu
+        email={email}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        variant="compact"
+      />
     </header>
   )
 }

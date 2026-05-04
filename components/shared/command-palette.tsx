@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   ListTodo,
   Plus,
+  UserRound,
   Users,
 } from "lucide-react"
 
@@ -331,6 +332,14 @@ export function CommandPalette() {
           >
             <Users aria-hidden="true" />
             Kontakte
+          </CommandItem>
+          <CommandItem
+            value="nav-profile"
+            onSelect={() => go("/profile")}
+            keywords={["profil", "profile", "konto", "account", "settings"]}
+          >
+            <UserRound aria-hidden="true" />
+            Profil
           </CommandItem>
         </CommandGroup>
         </CommandList>

@@ -33,7 +33,15 @@ function isActive(pathname: string, href: string): boolean {
   return pathname.startsWith(href + "/")
 }
 
-export function Sidebar({ email }: { email: string }) {
+export function Sidebar({
+  email,
+  displayName,
+  avatarUrl,
+}: {
+  email: string
+  displayName: string | null
+  avatarUrl: string | null
+}) {
   return (
     // `fixed` (not `sticky`) takes the aside fully out of document flow
     // so the browser's elastic overscroll can't drag it along with the
@@ -41,13 +49,25 @@ export function Sidebar({ email }: { email: string }) {
     // Mobile uses the topbar's <Sheet> pattern instead — that path is
     // unaffected because this aside is `hidden md:flex`.
     <aside className="fixed left-0 top-0 z-30 hidden h-screen w-60 flex-col border-r border-border bg-background md:flex">
-      <SidebarContent email={email} />
+      <SidebarContent
+        email={email}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+      />
     </aside>
   )
 }
 
 // Extracted so the topbar's mobile <Sheet> can render the same content.
-export function SidebarContent({ email }: { email: string }) {
+export function SidebarContent({
+  email,
+  displayName,
+  avatarUrl,
+}: {
+  email: string
+  displayName: string | null
+  avatarUrl: string | null
+}) {
   const pathname = usePathname()
 
   return (
@@ -87,7 +107,11 @@ export function SidebarContent({ email }: { email: string }) {
       </nav>
 
       <div className="border-t border-border p-3">
-        <UserMenu email={email} />
+        <UserMenu
+          email={email}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+        />
       </div>
     </div>
   )

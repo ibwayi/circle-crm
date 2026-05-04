@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { CommandPalette } from "@/components/shared/command-palette"
 import { Sidebar } from "@/components/shared/sidebar"
 import { Topbar } from "@/components/shared/topbar"
+import { getUserPreferences } from "@/lib/db/user-preferences"
 
 export default async function AppLayout({
   children,
@@ -21,6 +22,12 @@ export default async function AppLayout({
   }
 
   const email = user.email ?? ""
+  // Fetched once per layout render (Next caches across the request
+  // tree). Sidebar account card + topbar user menu both consume the
+  // avatar + display_name; profile page reads the full row directly.
+  const preferences = await getUserPreferences(supabase, user.id)
+  const displayName = preferences?.display_name ?? null
+  const avatarUrl = preferences?.avatar_url ?? null
 
   return (
     // The sidebar is `fixed` (see components/shared/sidebar.tsx). The
@@ -28,11 +35,19 @@ export default async function AppLayout({
     // main don't slide under it. Mobile (< md) uses the topbar's Sheet
     // and the sidebar itself is `hidden`, so no offset is needed there.
     <div className="min-h-screen bg-background md:pl-60">
-      <Sidebar email={email} />
+      <Sidebar
+        email={email}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+      />
       {/* min-w-0 + overflow-x-clip prevents wide table children from
           blowing out the column. */}
       <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip">
-        <Topbar email={email} />
+        <Topbar
+          email={email}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+        />
         <main className="min-w-0 flex-1 overflow-x-clip">{children}</main>
       </div>
       {/* Global Cmd+K palette. Renders the dialog itself + the

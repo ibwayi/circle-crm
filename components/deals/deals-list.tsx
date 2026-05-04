@@ -62,25 +62,29 @@ const TABS: { value: TabValue; label: string }[] = [
 
 const VIEW_STORAGE_KEY = "circle:deals-view"
 const VIEW_STORAGE_EVENT = "circle:deals-view-change"
-const SSR_VIEW: View = "table"
 
 function isView(v: string): v is View {
   return v === "table" || v === "groups" || v === "kanban"
 }
 
+// Module-level cache. Includes the fallback in the cache key so a
+// preference change (rare, but possible if the user edits Profile in
+// another tab) invalidates correctly.
 let cachedViewRaw: string | null | undefined = undefined
-let cachedView: View = SSR_VIEW
+let cachedFallback: View = "table"
+let cachedView: View = "table"
 
-function readView(): View {
+function readView(fallback: View): View {
   let raw: string | null = null
   try {
     raw = window.localStorage.getItem(VIEW_STORAGE_KEY)
   } catch {
     raw = null
   }
-  if (raw === cachedViewRaw) return cachedView
+  if (raw === cachedViewRaw && fallback === cachedFallback) return cachedView
   cachedViewRaw = raw
-  cachedView = raw && isView(raw) ? raw : SSR_VIEW
+  cachedFallback = fallback
+  cachedView = raw && isView(raw) ? raw : fallback
   return cachedView
 }
 
@@ -91,10 +95,6 @@ function subscribeView(callback: () => void): () => void {
     window.removeEventListener("storage", callback)
     window.removeEventListener(VIEW_STORAGE_EVENT, callback)
   }
-}
-
-function getServerView(): View {
-  return SSR_VIEW
 }
 
 function useDebouncedCallback<Args extends unknown[]>(
@@ -139,6 +139,7 @@ export function DealsList({
   sortDirection,
   companies,
   contacts,
+  defaultView,
 }: {
   deals: DealWithRelations[]
   counts: DealCounts
@@ -151,6 +152,11 @@ export function DealsList({
   sortDirection: SortDirection
   companies: { id: string; name: string }[]
   contacts: ContactOption[]
+  // User's preferred view from user_preferences.default_deal_view
+  // (server-rendered). Used as the fallback when localStorage is empty
+  // — localStorage still wins on devices where the user has explicitly
+  // chosen something different. Phase 28.
+  defaultView: View
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -158,7 +164,11 @@ export function DealsList({
 
   const [searchInput, setSearchInput] = useState(initialSearch)
 
-  const view = useSyncExternalStore(subscribeView, readView, getServerView)
+  const view = useSyncExternalStore(
+    subscribeView,
+    () => readView(defaultView),
+    () => defaultView
+  )
 
   const changeView = useCallback((next: View) => {
     try {
