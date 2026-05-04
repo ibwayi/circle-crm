@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { format } from "date-fns"
 
 import type { Database } from "@/types/database"
+import { getPrimaryWorkspaceId } from "@/lib/db/workspaces"
 
 type Client = SupabaseClient<Database>
 
@@ -323,10 +324,17 @@ function applyParent(
 export async function createTask(
   client: Client,
   userId: string,
-  input: CreateTaskInput
+  input: CreateTaskInput,
+  workspaceId?: string
 ): Promise<Task> {
+  // Phase 31 transitional: workspace_id is NOT NULL on the table
+  // post-0017. When the caller doesn't pass one, fall back to the
+  // user's primary workspace via getPrimaryWorkspaceId.
+  const workspace_id =
+    workspaceId ?? (await getPrimaryWorkspaceId(client))
   const insert: TaskInsert = {
     user_id: userId,
+    workspace_id,
     title: input.title,
     notes: input.notes ?? null,
     due_date: input.dueDate ?? null,

@@ -40,11 +40,11 @@ export type DealContactActionResult =
 // the rest are server defaults.
 type CreateDealInput = Omit<
   DealInsert,
-  "user_id" | "id" | "created_at" | "updated_at" | "closed_at"
+  "user_id" | "id" | "created_at" | "updated_at" | "closed_at" | "workspace_id"
 >
 type UpdateDealInput = Omit<
   DealUpdate,
-  "user_id" | "id" | "created_at" | "updated_at" | "closed_at"
+  "user_id" | "id" | "created_at" | "updated_at" | "closed_at" | "workspace_id"
 >
 
 function errorMessage(e: unknown): string {

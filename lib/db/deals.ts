@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
 import { escapeIlike } from "@/lib/db/_utils"
+import { getPrimaryWorkspaceId } from "@/lib/db/workspaces"
 
 type Client = SupabaseClient<Database>
 
@@ -191,6 +192,7 @@ export async function listDeals(
     return {
       id: row.id,
       user_id: row.user_id,
+      workspace_id: row.workspace_id,
       company_id: row.company_id,
       title: row.title,
       value_eur: row.value_eur,
@@ -256,12 +258,18 @@ export async function getDeal(
 
 export async function createDeal(
   client: Client,
-  input: DealInsert,
+  input: Omit<DealInsert, "workspace_id"> & { workspace_id?: string },
   primaryContactId?: string
 ): Promise<Deal> {
+  // Phase 31 transitional: helper fills workspace_id from the user's
+  // primary workspace when caller omits it. Phase 32 wires the active
+  // workspace explicitly through the create-deal action.
+  const workspace_id =
+    input.workspace_id ?? (await getPrimaryWorkspaceId(client))
+
   const { data: deal, error } = await client
     .from("deals")
-    .insert(input)
+    .insert({ ...input, workspace_id })
     .select()
     .single()
   if (error) throw error
@@ -550,6 +558,7 @@ export async function getRecentDealActivity(
     return {
       id: row.id,
       user_id: row.user_id,
+      workspace_id: row.workspace_id,
       company_id: row.company_id,
       title: row.title,
       value_eur: row.value_eur,

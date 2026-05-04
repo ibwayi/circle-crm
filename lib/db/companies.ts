@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
 import { escapeIlike } from "@/lib/db/_utils"
+import { getPrimaryWorkspaceId } from "@/lib/db/workspaces"
 
 type Client = SupabaseClient<Database>
 
@@ -150,11 +151,17 @@ export async function getCompany(
 
 export async function createCompany(
   client: Client,
-  input: CompanyInsert
+  input: Omit<CompanyInsert, "workspace_id"> & { workspace_id?: string }
 ): Promise<Company> {
+  // Phase 31: workspace_id is NOT NULL on the table. Callers (server
+  // actions) typically don't know the active workspace yet — Phase 32
+  // wires that explicitly via getActiveWorkspaceId. Until then, the
+  // helper falls back to the user's primary workspace.
+  const workspace_id =
+    input.workspace_id ?? (await getPrimaryWorkspaceId(client))
   const { data, error } = await client
     .from("companies")
-    .insert(input)
+    .insert({ ...input, workspace_id })
     .select()
     .single()
   if (error) throw error

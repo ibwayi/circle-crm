@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import type { Database } from "@/types/database"
+import { getPrimaryWorkspaceId } from "@/lib/db/workspaces"
 
 type Client = SupabaseClient<Database>
 
@@ -101,12 +102,20 @@ export async function getSavedView(
 export async function createSavedView(
   client: Client,
   userId: string,
-  input: SavedViewInput
+  input: SavedViewInput,
+  workspaceId?: string
 ): Promise<SavedView> {
+  // Phase 31 transitional: saved_views are scoped per-user-per-workspace.
+  // When the caller doesn't pass workspaceId, fall back to the user's
+  // primary workspace. Phase 32 will thread the active workspace
+  // through every saved-views action.
+  const workspace_id =
+    workspaceId ?? (await getPrimaryWorkspaceId(client))
   const { data, error } = await client
     .from("saved_views")
     .insert({
       user_id: userId,
+      workspace_id,
       entity: input.entity,
       name: input.name.trim(),
       filters: input.filters,

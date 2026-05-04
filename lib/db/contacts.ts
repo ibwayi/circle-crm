@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
 import { escapeIlike } from "@/lib/db/_utils"
+import { getPrimaryWorkspaceId } from "@/lib/db/workspaces"
 
 type Client = SupabaseClient<Database>
 
@@ -185,11 +186,16 @@ export async function getContact(
 
 export async function createContact(
   client: Client,
-  input: ContactInsert
+  input: Omit<ContactInsert, "workspace_id"> & { workspace_id?: string }
 ): Promise<Contact> {
+  // Phase 31 transitional: helper fills workspace_id from the user's
+  // primary workspace when caller omits it. Phase 32 wires the active
+  // workspace explicitly through every page.
+  const workspace_id =
+    input.workspace_id ?? (await getPrimaryWorkspaceId(client))
   const { data, error } = await client
     .from("contacts")
-    .insert(input)
+    .insert({ ...input, workspace_id })
     .select()
     .single()
   if (error) throw error

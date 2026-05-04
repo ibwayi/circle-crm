@@ -18,11 +18,11 @@ export type ContactActionResult =
 
 type CreateContactInput = Omit<
   ContactInsert,
-  "user_id" | "id" | "created_at" | "updated_at" | "_migrated_from_customer_id"
+  "user_id" | "id" | "created_at" | "updated_at" | "workspace_id" | "_migrated_from_customer_id"
 >
 type UpdateContactInput = Omit<
   ContactUpdate,
-  "user_id" | "id" | "created_at" | "updated_at" | "_migrated_from_customer_id"
+  "user_id" | "id" | "created_at" | "updated_at" | "workspace_id" | "_migrated_from_customer_id"
 >
 
 function errorMessage(e: unknown): string {

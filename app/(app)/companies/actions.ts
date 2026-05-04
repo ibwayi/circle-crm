@@ -20,11 +20,11 @@ export type CompanyActionResult =
 // them. user_id is filled by the action from the authenticated session.
 type CreateCompanyInput = Omit<
   CompanyInsert,
-  "user_id" | "id" | "created_at" | "updated_at"
+  "user_id" | "id" | "created_at" | "updated_at" | "workspace_id"
 >
 type UpdateCompanyInput = Omit<
   CompanyUpdate,
-  "user_id" | "id" | "created_at" | "updated_at"
+  "user_id" | "id" | "created_at" | "updated_at" | "workspace_id"
 >
 
 function errorMessage(e: unknown): string {

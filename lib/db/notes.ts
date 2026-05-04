@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
 
+import { getPrimaryWorkspaceId } from "@/lib/db/workspaces"
+
 type Client = SupabaseClient<Database>
 
 export type Note = Database["public"]["Tables"]["notes"]["Row"]
@@ -63,13 +65,21 @@ export async function listNotesForDeal(
 
 export async function createNote(
   client: Client,
-  input: CreateNoteInput
+  input: CreateNoteInput & { workspaceId?: string }
 ): Promise<Note> {
   // Discriminate on which key is present and set exactly one FK column on
   // the Insert. The DB CHECK from 0007 (narrowed in 0009) enforces "exactly
-  // one" at runtime.
+  // one" at runtime. Phase 31: workspace_id required by schema; falls back
+  // to the user's primary workspace when callers don't pass it explicitly
+  // — Phase 32+ will start threading workspace_id through.
+  const workspaceId =
+    input.workspaceId ?? (await getPrimaryWorkspaceId(client))
   let insert: NoteInsert
-  const base = { content: input.content, user_id: input.userId }
+  const base = {
+    content: input.content,
+    user_id: input.userId,
+    workspace_id: workspaceId,
+  }
   if ("companyId" in input) {
     insert = { ...base, company_id: input.companyId }
   } else if ("contactId" in input) {
